@@ -1,0 +1,49 @@
+import { useEffect, useState } from "react";
+import { Link, Navigate, Route, Routes, useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { Bell, CheckCircle2, ChevronDown, Circle, Command, FolderKanban, LayoutDashboard, ListTodo, Menu, Moon, Plus, Search, Settings, Sun, Users, X } from "lucide-react";
+
+type View = "board" | "list" | "overview";
+const sampleTasks = [
+  { id: "CF-101", title: "Design onboarding experience", status: "todo", priority: "High", description: "Create a clear first-run experience for new workspace members." },
+  { id: "CF-102", title: "Build workspace navigation", status: "todo", priority: "Medium", description: "Make navigation intuitive across projects and teams." },
+  { id: "CF-103", title: "Implement task details", status: "progress", priority: "High", description: "Support a shareable, responsive task details drawer." },
+  { id: "CF-104", title: "Define design tokens", status: "done", priority: "Low", description: "Create a consistent design language." }
+];
+const columns = [{ id: "todo", label: "To do", dot: "gray" }, { id: "progress", label: "In progress", dot: "blue" }, { id: "done", label: "Done", dot: "green" }];
+function AppShell() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [params, setParams] = useSearchParams();
+  const [view, setView] = useState<View>("board");
+  const [dark, setDark] = useState(() => localStorage.getItem("collabflow-theme") === "dark");
+  const [mobileNav, setMobileNav] = useState(false);
+  const task = sampleTasks.find(t => t.id === params.get("task"));
+  useEffect(() => { document.documentElement.classList.toggle("dark", dark); localStorage.setItem("collabflow-theme", dark ? "dark" : "light"); }, [dark]);
+  const navItems = [{ to: "/app", icon: LayoutDashboard, name: "Overview" }, { to: "/app/my-tasks", icon: ListTodo, name: "My tasks" }, { to: "/app/projects", icon: FolderKanban, name: "Projects" }, { to: "/app/members", icon: Users, name: "Members" }, { to: "/app/settings", icon: Settings, name: "Settings" }];
+  const openTask = (id: string) => setParams({ task: id });
+  const closeTask = () => setParams({});
+  const projectPage = location.pathname.includes("/projects/website");
+  return <div className="app">
+    <aside className={`sidebar ${mobileNav ? "sidebar-open" : ""}`}>
+      <div className="brand"><div className="brand-mark"><Command size={19}/></div><span>collab<span className="brand-accent">flow</span></span></div>
+      <button className="workspace"><span className="workspace-icon">S</span><span className="workspace-text"><strong>Studio North</strong><small>Free workspace</small></span><ChevronDown size={16}/></button>
+      <div className="nav-caption">WORKSPACE</div>
+      <nav aria-label="Workspace navigation">{navItems.map(item => <Link key={item.to} className={`nav-item ${location.pathname === item.to ? "active" : ""}`} to={item.to} onClick={() => setMobileNav(false)}><item.icon size={18}/>{item.name}</Link>)}</nav>
+      <div className="projects-heading"><span>YOUR PROJECTS</span><Plus size={16}/></div>
+      <Link to="/app/projects/website" className="project-link" onClick={() => setMobileNav(false)}><span className="project-dot purple"/>Website redesign</Link>
+      <Link to="/app/projects/website" className="project-link" onClick={() => setMobileNav(false)}><span className="project-dot cyan"/>Mobile application</Link>
+      <div className="sidebar-bottom"><div className="avatar">JD</div><span><strong>Jamie Davis</strong><small>Workspace owner</small></span><button aria-label="Toggle dark mode" className="icon-button" onClick={() => setDark(!dark)}>{dark ? <Sun size={18}/> : <Moon size={18}/>}</button></div>
+    </aside>
+    {mobileNav && <button className="mobile-backdrop" aria-label="Close menu" onClick={() => setMobileNav(false)}/>}
+    <main className="main">
+      <header className="topbar"><div className="topbar-left"><button className="icon-button mobile-menu" onClick={() => setMobileNav(true)} aria-label="Open menu"><Menu size={20}/></button><span>Workspace</span><span className="slash">/</span><strong>{projectPage ? "Website redesign" : location.pathname === "/app" ? "Overview" : location.pathname.split("/").pop()?.replace("-", " ")}</strong></div><div className="topbar-actions"><span className="search-hint"><Search size={16}/> Search <kbd>⌘ K</kbd></span><button className="icon-button" aria-label="Notifications" onClick={() => navigate("/app/notifications")}><Bell size={19}/></button><span className="top-avatar">JD</span></div></header>
+      <div className="page">
+        {projectPage ? <><div className="eyebrow">PROJECT / WEB</div><div className="page-heading"><div><h1>Website redesign <span className="heading-spark">✦</span></h1><p>A better digital experience, built together.</p></div><button className="primary-button" onClick={() => openTask("CF-101")}><Plus size={17}/> View task</button></div><div className="tabs">{(["board","list","overview"] as View[]).map(v => <button key={v} className={view === v ? "tab selected" : "tab"} onClick={() => setView(v)}>{v[0].toUpperCase()+v.slice(1)}</button>)}</div>{view === "board" ? <div className="kanban">{columns.map(c => <section className="kanban-column" key={c.id}><div className="column-title"><span className={`status-dot ${c.dot}`}/>{c.label}<span className="count">{sampleTasks.filter(t => t.status === c.id).length}</span></div>{sampleTasks.filter(t => t.status === c.id).map(t => <button className="task-card" key={t.id} onClick={() => openTask(t.id)}><span className="task-title">{t.title}</span><span className="task-bottom"><span>{t.id}</span><span className={`priority ${t.priority.toLowerCase()}`}>{t.priority}</span></span></button>)}</section>)}</div> : view === "list" ? <div className="panel list-panel">{sampleTasks.map(t => <button className="list-row" key={t.id} onClick={() => openTask(t.id)}><Circle size={17}/><span>{t.title}</span><small>{t.id}</small></button>)}</div> : <div className="stats"><Stat label="Total tasks" value="4" detail="Across this project"/><Stat label="Completed" value="1" detail="25% completion"/><Stat label="In progress" value="1" detail="Currently active"/></div>}</> :
+        <><div className="eyebrow">YOUR WORKSPACE <span className="eyebrow-star">✦</span></div><div className="page-heading"><div><h1>{location.pathname === "/app" ? "Good morning, Jamie" : location.pathname === "/app/my-tasks" ? "My tasks" : location.pathname === "/app/projects" ? "Projects" : location.pathname === "/app/members" ? "Members" : location.pathname === "/app/settings" ? "Settings" : "Notifications"} <span className="heading-spark">✦</span></h1><p>{location.pathname === "/app" ? "Here's what's happening across your workspace today." : "Your workspace, organized in one place."}</p></div><Link className="primary-button" to="/app/projects/website"><Plus size={17}/> Open project</Link></div><div className="stats"><Stat label="Total tasks" value="24" detail="Across your workspace"/><Stat label="In progress" value="08" detail="Currently active"/><Stat label="Completed" value="16" detail="This month"/><Stat label="Due soon" value="03" detail="Needs your attention"/></div><div className="dashboard-grid"><section className="panel"><div className="panel-heading"><div><h2>Your priorities</h2><p>Keep the important things moving.</p></div><Link to="/app/projects/website">View all →</Link></div>{sampleTasks.slice(0,3).map(t => <button className="priority-row" key={t.id} onClick={() => navigate(`/app/projects/website?task=${t.id}`)}><CheckCircle2 size={18}/><span><strong>{t.title}</strong><small>Website redesign · {t.id}</small></span><span className={`priority ${t.priority.toLowerCase()}`}>{t.priority}</span></button>)}</section><section className="panel"><div className="panel-heading"><div><h2>Active projects</h2><p>Everything your team is building.</p></div></div>{[{name:"Website redesign",pct:72,color:"purple"},{name:"Mobile application",pct:46,color:"cyan"},{name:"API infrastructure",pct:88,color:"green"}].map(p => <Link className="progress-item" to="/app/projects/website" key={p.name}><div><span className={`project-dot ${p.color}`}/><strong>{p.name}</strong><span>{p.pct}%</span></div><div className="progress-track"><div style={{width:`${p.pct}%`}}/></div></Link>)}</section></div><div className="demo-notice">✦ Preview workspace — sample content only. Authentication and persistent data are coming next.</div></>}
+      </div>
+    </main>
+    {task && <><button className="drawer-overlay" aria-label="Close task details" onClick={closeTask}/><aside className="task-drawer" role="dialog" aria-modal="true" aria-label="Task details"><div className="drawer-header"><span>Website redesign / {task.id}</span><button className="icon-button" aria-label="Close task details" onClick={closeTask}><X size={19}/></button></div><div className="drawer-body"><span className="eyebrow">{task.id}</span><h2>{task.title}</h2><p>{task.description}</p><div className="detail-grid"><span>Status</span><strong>{columns.find(c=>c.id===task.status)?.label}</strong><span>Priority</span><strong>{task.priority}</strong><span>Assignee</span><strong>Unassigned</strong><span>Due date</span><strong>Not set</strong></div><h3>Activity & comments</h3><div className="empty-comments">Comments will appear here once collaboration is connected.</div></div></aside></>}
+  </div>;
+}
+function Stat({label,value,detail}:{label:string,value:string,detail:string}) {return <div className="stat-card"><span>{label}</span><strong>{value}</strong><small>{detail}</small></div>;}
+export default function App() {return <Routes><Route path="/" element={<Navigate to="/app" replace/>}/><Route path="/app/*" element={<AppShell/>}/><Route path="*" element={<Navigate to="/app" replace/>}/></Routes>;}
