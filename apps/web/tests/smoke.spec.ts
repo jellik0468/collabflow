@@ -16,7 +16,7 @@ test("task drawer has shareable URL and can be closed", async ({ page }) => {
   await page.getByRole("button", { name: /Design onboarding experience/ }).click();
   await expect(page.getByRole("dialog", { name: "Task details" })).toBeVisible();
   await expect(page).toHaveURL(/task=CF-101/);
-  await page.getByRole("button", { name: "Close task details" }).click();
+  await page.getByRole("dialog", { name: "Task details" }).getByRole("button", { name: "Close task details" }).click();
   await expect(page.getByRole("dialog", { name: "Task details" })).toHaveCount(0);
 });
 
