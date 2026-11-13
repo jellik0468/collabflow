@@ -1,8 +1,9 @@
 import { expect, test } from "@playwright/test";
 
-test("dashboard renders and navigates to the project board", async ({ page }) => {
+test("dashboard renders and navigates to the project board", async ({ page, isMobile }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { name: /Good morning, Jamie/ })).toBeVisible();
+  if (isMobile) await page.getByRole("button", { name: "Open menu" }).click();
   await page.getByRole("link", { name: "Website redesign" }).first().click();
   await expect(page.getByRole("heading", { name: /Website redesign/ })).toBeVisible();
   await expect(page.getByText("Design onboarding experience")).toBeVisible();
