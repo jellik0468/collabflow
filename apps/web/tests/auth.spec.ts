@@ -1,0 +1,33 @@
+import { randomUUID } from "node:crypto";
+import { expect, test } from "@playwright/test";
+
+test("registers, restores a session and returns to a protected task after login", async ({ page }) => {
+  const email = `${randomUUID()}@example.test`;
+  const password = "browser-test-password";
+  const taskUrl = "/app/projects/website?task=CF-101";
+  await page.goto(taskUrl);
+  await expect(page.getByRole("heading", { name: "Sign in to CollabFlow" })).toBeVisible();
+  await page.getByRole("link", { name: "Create an account" }).click();
+  await page.getByLabel("Full name").fill("Alex Lee");
+  await page.getByLabel("Email address").fill(email);
+  await page.getByLabel("Password").fill(password);
+  const formFits = await page.locator(".auth-card").evaluate(card => card.getBoundingClientRect().right <= window.innerWidth);
+  expect(formFits).toBe(true);
+  await page.getByRole("button", { name: "Create account" }).click();
+  await expect(page).toHaveURL(new RegExp(`/app/projects/website\\?task=CF-101$`));
+  await page.reload();
+  await expect(page.getByRole("dialog", { name: "Task details" })).toBeVisible();
+  await page.getByRole("dialog").getByRole("button", { name: "Close task details" }).click();
+  const menu = page.getByRole("button", { name: "Open menu" });
+  if (await menu.isVisible()) await menu.click();
+  await page.getByRole("button", { name: "Sign out" }).click();
+  await expect(page).toHaveURL(/\/login/);
+  await page.goto(taskUrl);
+  await page.getByLabel("Email address").fill(email);
+  await page.getByLabel("Password").fill("incorrect-password");
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByRole("alert")).toHaveText("Invalid credentials");
+  await page.getByLabel("Password").fill(password);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByRole("dialog", { name: "Task details" })).toBeVisible();
+});

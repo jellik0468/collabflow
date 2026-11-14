@@ -1,8 +1,17 @@
+import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
+
+test.beforeEach(async ({ page, baseURL }) => {
+  const response = await page.request.post("/api/auth/register", {
+    headers: { Origin: baseURL! },
+    data: { name: "Jamie Davis", email: `${randomUUID()}@example.test`, password: "browser-test-password" },
+  });
+  expect(response.status()).toBe(201);
+});
 
 test("dashboard renders and navigates to the project board", async ({ page, isMobile }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: /Good morning, Jamie/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Welcome, Jamie/ })).toBeVisible();
   if (isMobile) await page.getByRole("button", { name: "Open menu" }).click();
   await page.getByRole("link", { name: "Website redesign" }).first().click();
   await expect(page.getByRole("heading", { name: /Website redesign/ })).toBeVisible();
