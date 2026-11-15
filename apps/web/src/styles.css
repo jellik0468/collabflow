@@ -44,3 +44,26 @@
 .dark .auth-card, .dark .auth-form input { color: #eeeaff; background: #1c1d30; border-color: #545571; }
 .dark .auth-switch, .dark .auth-form small { color: #bab7d1; }
 .dark .auth-switch a { color: #c5b7ff; }
+
+.workspace-control { display: grid; gap: .6rem; padding: .75rem; margin: 0 .75rem 1rem; border: 1px solid #d9dcec; border-radius: .7rem; }
+.workspace-control label { font-size: .8rem; font-weight: 650; }
+.workspace-control select, .workspace-control input { width: 100%; min-height: 2.5rem; padding: .35rem .5rem; border: 1px solid #918ca2; border-radius: .45rem; background: transparent; color: inherit; }
+.workspace-actions { display: flex; flex-wrap: wrap; gap: .4rem .75rem; }
+.workspace-actions button { min-height: 2rem; font-size: .78rem; }
+.workspace-actions button:not(.primary-button), .workspace-status button { text-decoration: underline; }
+.workspace-form { display: grid; gap: .5rem; }
+.workspace-control p, .workspace-status { font-size: .8rem; }
+.workspace-status { margin: .75rem 1.5rem; }
+.workspace-empty { display: grid; justify-items: start; gap: .75rem; padding: clamp(1.25rem, 4vw, 2.5rem); overflow-wrap: anywhere; }
+.workspace-empty h1 { font-size: clamp(1.5rem, 4vw, 2rem); font-weight: 700; }
+.dark .workspace-control option { background: #1c1d30; color: #eeeaff; }
+.topbar-left { min-width: 0; }
+.topbar-workspace { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.workspace-control select, .workspace-control input { min-width: 0; }
+.workspace-control { grid-template-columns: minmax(0, 1fr); }
+.dark .workspace-control { border-color: #424c64; }
+@media (max-width: 760px) {
+  .app { --mobile-sidebar-width: min(252px, calc(100vw - 48px)); }
+  .sidebar { width: var(--mobile-sidebar-width); overflow-y: auto; }
+  .mobile-backdrop { left: var(--mobile-sidebar-width); }
+}
