@@ -62,4 +62,8 @@
 .workspace-control select, .workspace-control input { min-width: 0; }
 .workspace-control { grid-template-columns: minmax(0, 1fr); }
 .dark .workspace-control { border-color: #424c64; }
-@media (max-width: 760px) { .sidebar { overflow-y: auto; } }
+@media (max-width: 760px) {
+  .app { --mobile-sidebar-width: min(252px, calc(100vw - 48px)); }
+  .sidebar { width: var(--mobile-sidebar-width); overflow-y: auto; }
+  .mobile-backdrop { left: var(--mobile-sidebar-width); }
+}
