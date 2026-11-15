@@ -1,3 +1,4 @@
+import { protectJsonWrites } from "./protect-json-writes.js";
 import { randomBytes, createHash } from "node:crypto";
 import { Router, type Request, type Response, type NextFunction } from "express";
 import { rateLimit } from "express-rate-limit";
@@ -23,22 +24,7 @@ const limitAttempts = (limit: number) => rateLimit({
   message: { error: "Too many attempts. Try again in a few minutes." }
 });
 
-authRouter.use((req, res, next) => {
-  res.set("Cache-Control", "no-store");
-  if (req.method === "POST") {
-    const origin = req.get("Origin");
-    const webOrigin = process.env.WEB_ORIGIN ?? "http://localhost:5173";
-    if (origin && origin !== webOrigin) {
-      res.status(403).json({ error: "Request origin is not allowed" });
-      return;
-    }
-    if (!req.is("application/json")) {
-      res.status(415).json({ error: "Expected application/json" });
-      return;
-    }
-  }
-  next();
-});
+authRouter.use(protectJsonWrites);
 const hashToken = (token: string) => createHash("sha256").update(token).digest("hex");
 const publicUser = (user: { id: string; name: string; email: string }) => ({ id: user.id, name: user.name, email: user.email });
 const cookieOptions = { httpOnly: true as const, secure: process.env.NODE_ENV === "production", sameSite: "lax" as const, path: "/" };
