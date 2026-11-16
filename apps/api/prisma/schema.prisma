@@ -42,6 +42,7 @@ model Workspace {
   createdAt DateTime          @default(now())
   updatedAt DateTime          @updatedAt
   members   WorkspaceMember[]
+  projects  Project[]
 }
 
 model WorkspaceMember {
@@ -53,4 +54,17 @@ model WorkspaceMember {
 
   @@id([workspaceId, userId])
   @@index([userId])
+}
+
+model Project {
+  id          String    @id @default(uuid())
+  workspaceId String
+  name        String    @db.VarChar(100)
+  description String    @default("") @db.VarChar(1000)
+  archivedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, archivedAt])
 }

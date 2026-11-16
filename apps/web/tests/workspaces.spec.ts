@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
 
-test("creates, renames and switches workspaces across reloads", async ({ page, baseURL, isMobile }) => {
+test("manages workspaces and their projects across reloads", async ({ page, baseURL, isMobile }) => {
   const response = await page.request.post("/api/auth/register", {
     headers: { Origin: baseURL! },
     data: { name: "Workspace Tester", email: `${randomUUID()}@example.test`, password: "browser-test-password" },
@@ -35,4 +35,31 @@ test("creates, renames and switches workspaces across reloads", async ({ page, b
   if (isMobile) await menu.click();
   await switcher.selectOption({ label: "Operations" });
   await expect(switcher.locator("option:checked")).toHaveText("Operations");
+
+  if (isMobile) await page.getByRole("button", { name: "Close menu" }).click();
+  await page.getByRole("button", { name: "New project" }).click();
+  await page.getByLabel("Project name").fill("Release planning");
+  await page.getByLabel(/Description/).fill("Coordinate the release checklist.");
+  await page.getByRole("button", { name: "Create project" }).click();
+  await expect(page.getByRole("heading", { name: "Release planning" })).toBeVisible();
+  const projectUrl = page.url();
+  await page.getByRole("button", { name: "Edit project" }).click();
+  await page.getByLabel("Project name").fill("Release readiness");
+  await page.getByRole("button", { name: "Save changes" }).click();
+  await expect(page.getByRole("heading", { name: "Release readiness" })).toBeVisible();
+
+  if (isMobile) await menu.click();
+  await switcher.selectOption({ label: "Product Studio" });
+  if (isMobile) await page.getByRole("button", { name: "Close menu" }).click();
+  await expect(page.getByText("No projects in this workspace yet.")).toBeVisible();
+  await page.goto(projectUrl);
+  await expect(page.getByRole("heading", { name: "Release readiness" })).toBeVisible();
+  await expect(page.getByText("Coordinate the release checklist.")).toBeVisible();
+  await page.getByRole("button", { name: "Archive project" }).click();
+  await page.getByRole("button", { name: "Confirm archive" }).click();
+  await expect(page.getByText("No active projects in this workspace.")).toBeVisible();
+  await page.getByText("Archived projects (1)", { exact: true }).click();
+  await page.getByRole("link", { name: /Release readiness/ }).click();
+  await expect(page.getByText("Archived project", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Edit project" })).toHaveCount(0);
 });
