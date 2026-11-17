@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
 
-test("manages workspaces and their projects across reloads", async ({ page, baseURL, isMobile }) => {
+test("manages workspaces, projects and tasks across reloads", async ({ page, baseURL, isMobile }) => {
   const response = await page.request.post("/api/auth/register", {
     headers: { Origin: baseURL! },
     data: { name: "Workspace Tester", email: `${randomUUID()}@example.test`, password: "browser-test-password" },
@@ -55,6 +55,34 @@ test("manages workspaces and their projects across reloads", async ({ page, base
   await page.goto(projectUrl);
   await expect(page.getByRole("heading", { name: "Release readiness" })).toBeVisible();
   await expect(page.getByText("Coordinate the release checklist.")).toBeVisible();
+  await page.getByRole("button", { name: "New task" }).click();
+  const taskPanel = page.getByRole("dialog");
+  await taskPanel.getByLabel("Task title").fill("Verify rollout");
+  await taskPanel.getByLabel("Description").fill("Check the deployment checklist.");
+  await taskPanel.getByLabel("Status").selectOption("IN_PROGRESS");
+  await taskPanel.getByLabel("Priority").selectOption("HIGH");
+  await taskPanel.getByLabel("Assignee").selectOption({ label: "Workspace Tester" });
+  await taskPanel.getByLabel("Due date").fill("2026-12-01");
+  await taskPanel.getByRole("button", { name: "Create task" }).click();
+  await expect(page).toHaveURL(/task=[a-f0-9-]+$/);
+  await expect(taskPanel.getByRole("heading", { name: "Verify rollout" })).toBeVisible();
+  const dimensions = await taskPanel.evaluate(el => ({ panel: el.clientWidth, viewport: window.innerWidth }));
+  expect(dimensions.panel).toBe(isMobile ? dimensions.viewport : 480);
+  await page.reload();
+  await expect(taskPanel.getByText("Check the deployment checklist.")).toBeVisible();
+  await expect(taskPanel.getByText("2026-12-01")).toBeVisible();
+  await expect(taskPanel.getByText("Workspace Tester")).toBeVisible();
+  await taskPanel.getByRole("button", { name: "Edit task" }).click();
+  await taskPanel.getByLabel("Status").selectOption("DONE");
+  await taskPanel.getByRole("button", { name: "Save task" }).click();
+  await expect(taskPanel.getByText("Done", { exact: true })).toBeVisible();
+  await taskPanel.getByRole("button", { name: "Close task panel" }).click();
+  await page.getByRole("link", { name: /Verify rollout/ }).click();
+  await taskPanel.getByRole("button", { name: "Delete task" }).click();
+  await taskPanel.getByRole("button", { name: "Confirm delete" }).click();
+  await expect(taskPanel).toHaveCount(0);
+  await expect(page.getByText("No tasks in this project yet.")).toBeVisible();
+
   await page.getByRole("button", { name: "Archive project" }).click();
   await page.getByRole("button", { name: "Confirm archive" }).click();
   await expect(page.getByText("No active projects in this workspace.")).toBeVisible();
