@@ -1,3 +1,4 @@
+import { ProjectTasks } from "./tasks";
 import { useEffect, useState, type FormEvent } from "react";
 import { Archive, FolderKanban, Plus } from "lucide-react";
 import { Link, matchPath, useLocation, useNavigate } from "react-router-dom";
@@ -65,7 +66,7 @@ export function WorkspaceProjects({ workspace }: { workspace: Workspace }) {
   return <>
     {message && <p className="project-feedback" role="status">{message}</p>}
     {projectId ? project
-      ? <ProjectDetails key={project.id} project={project} basePath={basePath} canManage={canManage} onSave={save} onArchive={archive} />
+      ? <ProjectDetails key={project.id} project={project} workspaceId={workspace.id} basePath={basePath} canManage={canManage} onSave={save} onArchive={archive} />
       : <section className="panel workspace-empty"><h1>Project unavailable</h1><Link to={basePath}>Back to projects</Link></section>
       : <ProjectCollection key={location.pathname} title={location.pathname === "/app" ? workspace.name : "Projects"}
           basePath={basePath} active={active} archived={archived} canManage={canManage} onSave={save} />}
@@ -104,8 +105,8 @@ function ProjectEntry({ project, basePath }: { project: Project; basePath: strin
   </Link></li>;
 }
 
-function ProjectDetails({ project, basePath, canManage, onSave, onArchive }: {
-  project: Project; basePath: string; canManage: boolean; onSave: SaveProject; onArchive: (project: Project) => Promise<void>;
+function ProjectDetails({ project, workspaceId, basePath, canManage, onSave, onArchive }: {
+  project: Project; workspaceId: string; basePath: string; canManage: boolean; onSave: SaveProject; onArchive: (project: Project) => Promise<void>;
 }) {
   const [mode, setMode] = useState<"edit" | "archive" | null>(null);
   const [pending, setPending] = useState(false);
@@ -118,7 +119,7 @@ function ProjectDetails({ project, basePath, canManage, onSave, onArchive }: {
     finally { setPending(false); }
   }
 
-  return <section className="panel workspace-empty project-collection">
+  return <><section className="panel workspace-empty project-collection">
     <Link className="project-back" to={basePath}>Back to projects</Link>
     <div className="project-page-heading"><h1>{project.name}</h1>
       {canManage && !project.archivedAt && !mode && <div className="project-actions">
@@ -140,7 +141,9 @@ function ProjectDetails({ project, basePath, canManage, onSave, onArchive }: {
         <button className="project-secondary" disabled={pending} onClick={() => setMode(null)}>Cancel</button>
       </div>
     </section>}
-  </section>;
+  </section>
+    <ProjectTasks workspaceId={workspaceId} projectId={project.id} archived={Boolean(project.archivedAt)} canDelete={canManage} />
+  </>;
 }
 
 function ProjectForm({ project, onSave, onCancel }: { project?: Project; onSave: SaveProject; onCancel: () => void }) {
