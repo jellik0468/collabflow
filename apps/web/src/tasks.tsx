@@ -3,9 +3,11 @@ import { Plus, X } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 
 const statuses = { TODO: "To do", IN_PROGRESS: "In progress", DONE: "Done" };
+type TaskStatus = keyof typeof statuses;
+const lanes = Object.entries(statuses) as [TaskStatus, string][];
 const priorities = { LOW: "Low", MEDIUM: "Medium", HIGH: "High" };
 type TaskFields = {
-  title: string; description: string; status: keyof typeof statuses; priority: keyof typeof priorities;
+  title: string; description: string; status: TaskStatus; priority: keyof typeof priorities;
   dueDate: string | null; assigneeId: string | null;
 };
 type Task = TaskFields & { id: string };
@@ -33,6 +35,12 @@ export function ProjectTasks({ workspaceId, projectId, archived, canDelete }: {
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [notice, setNotice] = useState("");
+  const [moveError, setMoveError] = useState("");
+  const pendingMoves = useRef(new Set<string>());
+  const [moving, setMoving] = useState<ReadonlySet<string>>(new Set());
+  const [dragging, setDragging] = useState<string | null>(null);
+  const [dropLane, setDropLane] = useState<TaskStatus | null>(null);
+  const listView = params.get("view") === "list";
   const endpoint = `/api/workspaces/${workspaceId}/projects/${projectId}/tasks`;
   useEffect(() => {
     const controller = new AbortController();
@@ -78,18 +86,106 @@ export function ProjectTasks({ workspaceId, projectId, archived, canDelete }: {
     if (window.location.href === taskUrl) close();
   }
 
+  async function moveTask(id: string, status: TaskStatus, control?: HTMLSelectElement) {
+    const current = tasks.find(task => task.id === id);
+    if (!current || current.status === status || archived || pendingMoves.current.has(id)) return;
+    pendingMoves.current.add(id);
+    const restoreFocus = control && document.activeElement === control;
+    setMoving(previous => new Set(previous).add(id));
+    setNotice("");
+    setMoveError("");
+    try {
+      const { task } = await request<{ task: Task }>(`${endpoint}/${id}/status`, undefined, "PATCH", { status });
+      setData(previous => previous && ({ ...previous, tasks: previous.tasks.map(item => item.id === id ? { ...item, status: task.status } : item) }));
+      setNotice(`${task.title} moved to ${statuses[task.status]}.`);
+    } catch (error) {
+      setMoveError(error instanceof Error ? error.message : "Could not move task. Try again.");
+    } finally {
+      pendingMoves.current.delete(id);
+      setMoving(previous => {
+        const next = new Set(previous);
+        next.delete(id);
+        return next;
+      });
+      if (restoreFocus) requestAnimationFrame(() => {
+        if (document.activeElement === document.body) document.getElementById(`task-status-${id}`)?.focus();
+      });
+    }
+  }
+
+  function changeView(list: boolean) {
+    const next = new URLSearchParams(params);
+    if (list) next.set("view", "list");
+    else next.delete("view");
+    setParams(next);
+  }
+
+  function endDrag() {
+    setDragging(null);
+    setDropLane(null);
+  }
+
+  function taskCard(task: Task, draggable: boolean) {
+    return <li key={task.id} className="board-card" data-dragging={dragging === task.id}>
+      <Link to={`?${taskParams(task.id)}`} draggable={draggable && !archived && !moving.has(task.id)}
+        onDragStart={event => {
+          event.dataTransfer.effectAllowed = "move";
+          event.dataTransfer.setData("text/plain", task.id);
+          setDragging(task.id);
+        }} onDragEnd={endDrag}>
+        <strong>{task.title}</strong>
+        <span>{listView && `${statuses[task.status]} · `}{priorities[task.priority]} priority · {person(task)}</span>
+        {task.dueDate && <time dateTime={task.dueDate.slice(0, 10)}>{task.dueDate.slice(0, 10)}</time>}
+      </Link>
+      {!archived && <label className="board-card-status">Status
+        <select id={`task-status-${task.id}`} aria-label={`Status for ${task.title}`} value={task.status} disabled={moving.has(task.id)}
+          onChange={event => void moveTask(task.id, event.target.value as TaskStatus, event.currentTarget)}>
+          {lanes.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+        </select>
+      </label>}
+    </li>;
+  }
+
   return <section className="panel task-section" aria-label="Project tasks">
     <div className="project-page-heading"><h2>Tasks</h2>
       {!archived && <button className="primary-button" onClick={() => setParams(taskParams(undefined, true))}><Plus size={16} /> New task</button>}
     </div>
+    <div className="board-view-switch" role="group" aria-label="Task view">
+      <button type="button" aria-pressed={!listView} onClick={() => changeView(false)}>Board</button>
+      <button type="button" aria-pressed={listView} onClick={() => changeView(true)}>List</button>
+    </div>
     {notice && <p role="status">{notice}</p>}
-    {tasks.length ? <ul className="task-list">{tasks.map(task => <li key={task.id}>
-      <Link to={`?${taskParams(task.id)}`}>
-        <strong>{task.title}</strong>
-        <span>{statuses[task.status]} · {priorities[task.priority]} priority · {person(task)}</span>
-        {task.dueDate && <time dateTime={task.dueDate.slice(0, 10)}>{task.dueDate.slice(0, 10)}</time>}
-      </Link>
-    </li>)}</ul> : <p>No tasks in this project yet.</p>}
+    {moveError && <p role="alert">{moveError}</p>}
+    {!tasks.length && <p>No tasks in this project yet.</p>}
+    {listView ? <ul className="task-list board-card-list">{tasks.map(task => taskCard(task, false))}</ul>
+      : <div className="project-board" aria-label="Kanban board">
+        {lanes.map(([status, label]) => {
+          const laneTasks = tasks.filter(task => task.status === status);
+          return <section key={status} className="board-lane" aria-label={`${label} column`}
+            data-drop-active={dropLane === status}
+            onDragOver={event => {
+              if (!dragging || archived) return;
+              event.preventDefault();
+              event.dataTransfer.dropEffect = "move";
+              setDropLane(status);
+            }}
+            onDragLeave={event => {
+              if (!(event.relatedTarget instanceof Node) || !event.currentTarget.contains(event.relatedTarget)) {
+                setDropLane(current => current === status ? null : current);
+              }
+            }}
+            onDrop={event => {
+              if (!dragging || archived) return;
+              event.preventDefault();
+              const id = event.dataTransfer.getData("text/plain");
+              if (id === dragging) void moveTask(id, status);
+              endDrag();
+            }}>
+            <div className="board-lane-heading"><h3>{label}</h3><span aria-label={`${laneTasks.length} tasks`}>{laneTasks.length}</span></div>
+            {laneTasks.length ? <ul className="task-list board-card-list">{laneTasks.map(task => taskCard(task, true))}</ul> : <p className="board-empty">No tasks</p>}
+          </section>;
+        })}
+      </div>}
     {(creating || selected) && <TaskPanel key={active?.id ?? selected ?? "new"}
       title={active?.title ?? (creating ? "New task" : "Task unavailable")} onClose={close}>
       {active || creating

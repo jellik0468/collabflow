@@ -55,6 +55,13 @@ it("scopes task access, assignees and edits to workspace members and deletion to
   await member.client.patch(taskPath).send({ ...fields, status: "DONE", dueDate: null }).expect(200, {
     task: { ...task, status: "DONE", assigneeId: null, dueDate: null },
   });
+  const statusPath = `${taskPath}/status`;
+  await outsider.client.patch(statusPath).send({ status: "TODO" }).expect(404);
+  await member.client.patch(statusPath).send({ status: "UNKNOWN" }).expect(400);
+  await member.client.patch(statusPath).send({ status: "TODO", title: "Overwrite" }).expect(400);
+  await member.client.patch(statusPath).send({ status: "IN_PROGRESS" }).expect(200, {
+    task: { ...task, status: "IN_PROGRESS", assigneeId: null, dueDate: null },
+  });
   await member.client.delete(taskPath).send({}).expect(404);
 
   const archivedTask = await owner.client.post(path).send(fields).expect(201);
@@ -64,5 +71,6 @@ it("scopes task access, assignees and edits to workspace members and deletion to
   await member.client.get(path).expect(200);
   await owner.client.post(path).send(fields).expect(404);
   await owner.client.patch(historyPath).send(fields).expect(404);
+  await owner.client.patch(`${historyPath}/status`).send({ status: "DONE" }).expect(404);
   await owner.client.delete(historyPath).send({}).expect(404);
 });
