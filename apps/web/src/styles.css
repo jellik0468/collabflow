@@ -107,3 +107,25 @@
 .dark .task-dialog { background: #1a2030; color: #eef0fb; }
 .dark .task-list a, .dark .task-dialog-header { border-color: #424c64; }
 @media (max-width: 760px) { .task-dialog { width: 100%; } }
+
+.board-view-switch { display: flex; justify-self: start; gap: .25rem; padding: .2rem; border: 1px solid #dedfeb; border-radius: .55rem; }
+.board-view-switch button { padding: .4rem .65rem; border-radius: .4rem; font-size: .85rem; }
+.board-view-switch button[aria-pressed="true"] { background: #eeeaff; color: #4234a6; font-weight: 700; }
+.project-board { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .8rem; }
+.board-lane { min-width: 0; min-height: 10rem; padding: .65rem; border: 1px solid #e7e7f0; border-radius: .75rem; background: #f7f7fc; }
+.board-lane[data-drop-active="true"] { border-color: #8275ea; background: #eeeaff; }
+.board-lane-heading { display: flex; align-items: center; justify-content: space-between; padding: .25rem .2rem .65rem; }
+.board-lane-heading h3 { font-size: .9rem; font-weight: 700; }
+.board-lane-heading span, .board-empty { font-size: .8rem; }
+.board-empty { padding: .55rem .2rem; }
+.board-card { min-width: 0; border: 1px solid #dedfeb; border-radius: .6rem; background: #fff; }
+.board-card[data-dragging="true"] { opacity: .55; }
+.board-card-list a, .dark .board-card-list a { border: 0; }
+.board-card-list a[draggable="true"] { cursor: grab; }
+.board-card-list a:hover strong { text-decoration: underline; }
+.board-card-status { display: flex; align-items: center; flex-wrap: wrap; gap: .4rem; padding: 0 .75rem .65rem; font-size: .78rem; }
+.board-card-status select { min-width: 0; border: 1px solid #918ca2; border-radius: .35rem; padding: .35rem; background: transparent; color: inherit; }
+.dark .board-card, .dark .board-view-switch { border-color: #424c64; background: #1a2030; }
+.dark .board-lane { border-color: #424c64; background: #222a3c; }
+.dark .board-lane[data-drop-active="true"], .dark .board-view-switch button[aria-pressed="true"] { background: #302a58; color: #eef0fb; }
+@media (max-width: 1050px) { .project-board { grid-template-columns: 1fr; } .board-lane { min-height: 5rem; } }

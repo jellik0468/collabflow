@@ -73,6 +73,25 @@ function saveTask(creating: boolean): RequestHandler {
 taskRouter.post("/", saveTask(true));
 taskRouter.patch("/:taskId", saveTask(false));
 
+taskRouter.patch("/:taskId/status", async (req, res, next) => {
+  const parsed = z.object({ status: z.nativeEnum(TaskStatus) }).strict().safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Choose a valid task status." });
+    return;
+  }
+  try {
+    const task = await prisma.task.update({
+      where: {
+        id: req.params.taskId,
+        project: { ...projectAccess(req.params, res.locals.user.id), archivedAt: null },
+      },
+      data: parsed.data,
+      select: selection,
+    });
+    res.json({ task });
+  } catch (error) { next(error); }
+});
+
 taskRouter.delete<{ workspaceId: string; projectId: string; taskId: string }>("/:taskId", async (req, res, next) => {
   try {
     await prisma.task.delete({
