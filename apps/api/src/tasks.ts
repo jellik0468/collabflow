@@ -1,3 +1,4 @@
+import { publishProjectChange } from "./realtime.js";
 import { randomUUID } from "node:crypto";
 import { Prisma, TaskPriority, TaskStatus } from "@prisma/client";
 import { Router, type ErrorRequestHandler, type RequestHandler } from "express";
@@ -26,6 +27,17 @@ function projectAccess(params: Record<string, string>, userId: string, assigneeI
 }
 
 taskRouter.use(protectJsonWrites, requireUser);
+taskRouter.use((req, res, next) => {
+  const params = { ...req.params } as { workspaceId: string; projectId?: string };
+  if (["POST", "PATCH", "DELETE"].includes(req.method)) {
+    res.on("finish", () => {
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        publishProjectChange(params.workspaceId, params.projectId!);
+      }
+    });
+  }
+  next();
+});
 taskRouter.get("/", async (req, res, next) => {
   try {
     const project = await prisma.project.findFirstOrThrow({

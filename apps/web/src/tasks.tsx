@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useProjectSync } from "./use-project-sync";
+import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Plus, X } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 
@@ -41,11 +42,13 @@ export function ProjectTasks({ workspaceId, projectId, archived, canDelete }: {
   const [dragging, setDragging] = useState<string | null>(null);
   const [dropLane, setDropLane] = useState<TaskStatus | null>(null);
   const listView = params.get("view") === "list";
+  const refresh = useCallback(() => setAttempt(value => value + 1), []);
+  const connected = useProjectSync(workspaceId, projectId, refresh);
   const endpoint = `/api/workspaces/${workspaceId}/projects/${projectId}/tasks`;
   useEffect(() => {
     const controller = new AbortController();
     request<TaskData>(endpoint, controller.signal)
-      .then(result => { if (!controller.signal.aborted) setData(result); })
+      .then(result => { if (!controller.signal.aborted) { setData(result); setFailed(false); } })
       .catch(() => { if (!controller.signal.aborted) setFailed(true); });
     return () => controller.abort();
   }, [endpoint, attempt]);
@@ -154,6 +157,7 @@ export function ProjectTasks({ workspaceId, projectId, archived, canDelete }: {
       <button type="button" aria-pressed={!listView} onClick={() => changeView(false)}>Board</button>
       <button type="button" aria-pressed={listView} onClick={() => changeView(true)}>List</button>
     </div>
+    <p className="sync-status" role="status">{connected ? "Live updates connected" : "Live updates disconnected. Reconnecting…"}</p>
     {notice && <p role="status">{notice}</p>}
     {moveError && <p role="alert">{moveError}</p>}
     {!tasks.length && <p>No tasks in this project yet.</p>}

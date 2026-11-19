@@ -39,7 +39,7 @@ function makeSession() {
 function setSessionCookie(res: Response, session: ReturnType<typeof makeSession>) {
   res.cookie(cookieName, session.token, { ...cookieOptions, expires: session.data.expiresAt });
 }
-async function getSession(req: Request) {
+export async function getSession(req: Request) {
   const token = req.cookies?.[cookieName];
   if (typeof token !== "string" || token.length > 128) return null;
   return prisma.session.findFirst({

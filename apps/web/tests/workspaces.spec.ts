@@ -77,6 +77,10 @@ test("manages workspaces, projects and tasks across reloads", async ({ page, bas
   await taskPanel.getByRole("button", { name: "Save task" }).click();
   await expect(taskPanel.getByText("Done", { exact: true })).toBeVisible();
   await taskPanel.getByRole("button", { name: "Close task panel" }).click();
+  await expect(page.getByText("Live updates connected", { exact: true })).toBeVisible();
+  const teammate = await page.context().newPage();
+  await teammate.goto(page.url());
+  await expect(teammate.getByText("Live updates connected", { exact: true })).toBeVisible();
   const done = page.getByRole("region", { name: "Done column" });
   const todo = page.getByRole("region", { name: "To do column" });
   const taskLink = page.getByRole("link", { name: /Verify rollout/ });
@@ -85,6 +89,8 @@ test("manages workspaces, projects and tasks across reloads", async ({ page, bas
   if (isMobile) await status.selectOption("TODO");
   else await taskLink.dragTo(todo);
   await expect(todo.getByRole("link", { name: /Verify rollout/ })).toBeVisible();
+  await expect(teammate.getByRole("region", { name: "To do column" }).getByRole("link", { name: /Verify rollout/ })).toBeVisible();
+  await teammate.close();
   await page.reload();
   await expect(todo.getByRole("link", { name: /Verify rollout/ })).toBeVisible();
   await page.getByRole("button", { name: "List", exact: true }).click();
