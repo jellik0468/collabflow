@@ -1,3 +1,4 @@
+import { publishProjectChange } from "./realtime.js";
 import { randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { Router, type ErrorRequestHandler } from "express";
@@ -14,6 +15,19 @@ const selection = { id: true, name: true, description: true, archivedAt: true } 
 const unavailable = { error: "Workspace or project unavailable." };
 
 projectRouter.use(protectJsonWrites, requireUser);
+projectRouter.use((req, res, next) => {
+  const params = { ...req.params } as { workspaceId: string; projectId?: string };
+  const changedProjectId = req.path.split("/")[1];
+  if (["POST", "PATCH", "DELETE"].includes(req.method)) {
+    res.on("finish", () => {
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        const projectId = changedProjectId;
+        if (projectId) publishProjectChange(params.workspaceId, projectId);
+      }
+    });
+  }
+  next();
+});
 
 projectRouter.get("/", async (req, res, next) => {
   try {

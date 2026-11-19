@@ -1,5 +1,6 @@
+import { useProjectSync } from "./use-project-sync";
 import { ProjectTasks } from "./tasks";
-import { useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Archive, FolderKanban, Plus } from "lucide-react";
 import { Link, matchPath, useLocation, useNavigate } from "react-router-dom";
 
@@ -22,6 +23,8 @@ export function WorkspaceProjects({ workspace }: { workspace: Workspace }) {
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [message, setMessage] = useState("");
+  const refreshProject = useCallback(() => setAttempt(value => value + 1), []);
+  useProjectSync(workspace.id, projectId ?? "", refreshProject);
   const canManage = workspace.role === "OWNER";
 
   useEffect(() => {
