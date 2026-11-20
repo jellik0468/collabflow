@@ -29,7 +29,7 @@ test("manages workspaces, projects and tasks across reloads", async ({ page, bas
   if (isMobile) await page.getByRole("button", { name: "Close menu" }).click();
   await expect(page.getByRole("heading", { name: "Product Studio" })).toBeVisible();
   await expect(page.getByText("No projects in this workspace yet.")).toBeVisible();
-  await expect(page.getByText("Total tasks")).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "Total tasks", exact: true }).getByText("0", { exact: true })).toBeVisible();
   await page.reload();
   await expect(page.getByRole("heading", { name: "Product Studio" })).toBeVisible();
   if (isMobile) await menu.click();
@@ -37,6 +37,7 @@ test("manages workspaces, projects and tasks across reloads", async ({ page, bas
   await expect(switcher.locator("option:checked")).toHaveText("Operations");
 
   if (isMobile) await page.getByRole("button", { name: "Close menu" }).click();
+  await page.getByRole("link", { name: "Open projects", exact: true }).click();
   await page.getByRole("button", { name: "New project" }).click();
   await page.getByLabel("Project name").fill("Release planning");
   await page.getByLabel(/Description/).fill("Coordinate the release checklist.");
@@ -72,6 +73,18 @@ test("manages workspaces, projects and tasks across reloads", async ({ page, bas
   await expect(taskPanel.getByText("Check the deployment checklist.")).toBeVisible();
   await expect(taskPanel.getByText("2026-12-01")).toBeVisible();
   await expect(taskPanel.getByText("Workspace Tester")).toBeVisible();
+  const sharedTaskUrl = page.url();
+  const overview = await page.context().newPage();
+  await overview.goto("/app");
+  if (isMobile) await overview.getByRole("button", { name: "Open menu" }).click();
+  await overview.getByRole("combobox", { name: "Workspace" }).selectOption({ label: "Operations" });
+  if (isMobile) await overview.getByRole("button", { name: "Close menu" }).click();
+  await expect(overview.getByRole("region", { name: "Total tasks", exact: true }).getByText("1", { exact: true })).toBeVisible();
+  await expect(overview.getByRole("region", { name: "Completed", exact: true }).getByText("0", { exact: true })).toBeVisible();
+  await overview.getByRole("region", { name: "Assigned tasks" }).getByRole("link", { name: /Verify rollout/ }).click();
+  await expect(overview).toHaveURL(sharedTaskUrl);
+  await expect(overview.getByRole("dialog")).toBeVisible();
+  await overview.close();
   await taskPanel.getByRole("button", { name: "Edit task" }).click();
   await taskPanel.getByLabel("Status").selectOption("DONE");
   await taskPanel.getByRole("button", { name: "Save task" }).click();
