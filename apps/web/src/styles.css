@@ -129,3 +129,19 @@
 .dark .board-lane { border-color: #424c64; background: #222a3c; }
 .dark .board-lane[data-drop-active="true"], .dark .board-view-switch button[aria-pressed="true"] { background: #302a58; color: #eef0fb; }
 @media (max-width: 1050px) { .project-board { grid-template-columns: 1fr; } .board-lane { min-height: 5rem; } }
+
+.dashboard-section { min-width: 0; }
+.dashboard-section .panel-heading { gap: .75rem; flex-wrap: wrap; }
+.dashboard-section .panel-heading > span { font-size: .85rem; }
+.dashboard-section .panel-heading a { display: inline-flex; align-items: center; gap: .2rem; }
+.dashboard-task-list { padding: 0; list-style: none; }
+.dashboard-task-list li + li { border-top: 1px solid #dedfeb; }
+.dashboard-task-list a { display: flex; align-items: center; gap: .7rem; padding: .9rem 0; overflow-wrap: anywhere; }
+.dashboard-task-list a > span:first-of-type { flex: 1; min-width: 0; }
+.dashboard-task-list strong { display: block; font-size: .9rem; }
+.dashboard-task-list small { display: block; margin-top: .3rem; font-size: .8rem; }
+.dashboard-task-list .priority { flex-shrink: 0; }
+.dashboard-task-list a:hover strong { text-decoration: underline; }
+.dashboard-progress { display: block; width: 100%; height: .4rem; margin: 0 0 .9rem; accent-color: #6959e1; }
+.dashboard-caption { margin-top: .9rem; font-size: .8rem; }
+.dark .dashboard-task-list li + li { border-color: #424c64; }

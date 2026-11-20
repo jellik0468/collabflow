@@ -1,3 +1,4 @@
+import { dashboardRouter } from "./dashboard.js";
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
@@ -16,6 +17,7 @@ app.use(cookieParser());
 app.use("/api/auth", authRouter);
 app.use("/api/workspaces/:workspaceId/projects/:projectId/tasks", taskRouter);
 app.use("/api/workspaces/:workspaceId/projects", projectRouter);
+app.use("/api/workspaces/:workspaceId/dashboard", dashboardRouter);
 app.use("/api/workspaces", workspaceRouter);
 app.get("/api/health", (_req, res) => { res.json({ status: "ok", service: "collabflow-api" }); });
 app.use("/api", (_req, res) => { res.status(404).json({ error: "Route not found" }); });
