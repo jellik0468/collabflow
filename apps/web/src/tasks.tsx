@@ -1,3 +1,4 @@
+import { TaskComments } from "./comments";
 import { useProjectSync } from "./use-project-sync";
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Plus, X } from "lucide-react";
@@ -200,6 +201,7 @@ export function ProjectTasks({ workspaceId, projectId, archived, canDelete }: {
               if (creating && window.location.href === taskUrl) setParams(taskParams(id), { replace: true });
             }} onDelete={remove} />
         : <p>This task could not be found in the project.</p>}
+      {active && <TaskComments key={active.id} workspaceId={workspaceId} projectId={projectId} taskId={active.id} archived={archived} />}
     </TaskPanel>}
   </section>;
 }
