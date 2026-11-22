@@ -45,6 +45,7 @@ model Workspace {
   updatedAt DateTime          @updatedAt
   members   WorkspaceMember[]
   projects  Project[]
+  invitations Invitation[]
 }
 
 model WorkspaceMember {
@@ -115,4 +116,18 @@ model Comment {
   author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
   @@index([taskId, createdAt, id])
+}
+
+model Invitation {
+  id          String    @id @default(uuid())
+  workspaceId String
+  email       String    @db.VarChar(254)
+  tokenHash   String    @unique
+  expiresAt   DateTime
+  deliveredAt DateTime?
+  acceptedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, email])
 }

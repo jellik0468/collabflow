@@ -155,3 +155,8 @@
 .comment-body { white-space: pre-wrap; overflow-wrap: anywhere; margin: .6rem 0; }
 .comment-list .project-secondary { font-size: .8rem; }
 .dark .task-comments, .dark .comment-list > li { border-color: #424c64; }
+
+.member-list { list-style: none; padding: 0; width: 100%; }
+.member-list li { display: flex; flex-wrap: wrap; gap: .5rem 1rem; justify-content: space-between; padding: .9rem 0; border-bottom: 1px solid #dedfeb; }
+.member-list small { display: block; margin-top: .25rem; }
+.dark .member-list li { border-color: #424c64; }

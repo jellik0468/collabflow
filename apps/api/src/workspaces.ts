@@ -60,3 +60,17 @@ workspaceRouter.patch("/:id", async (req, res, next) => {
     next(error);
   }
 });
+
+
+workspaceRouter.get("/:id/members", async (req, res, next) => {
+  try {
+    const workspace = await prisma.workspace.findFirst({
+      where: { id: req.params.id, members: { some: { userId: res.locals.user.id } } },
+      select: { members: { orderBy: [{ role: "asc" }, { user: { name: "asc" } }], select: {
+        role: true, user: { select: { id: true, name: true, email: true } },
+      } } },
+    });
+    if (!workspace) { res.status(404).json({ error: "Workspace unavailable." }); return; }
+    res.json({ members: workspace.members.map(({ role, user }) => ({ ...user, role })) });
+  } catch (error) { next(error); }
+});
