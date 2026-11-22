@@ -1,3 +1,4 @@
+import { invitationRouter, workspaceInvitationRouter } from "./invitations.js";
 import { commentRouter } from "./comments.js";
 import { dashboardRouter } from "./dashboard.js";
 import "dotenv/config";
@@ -16,6 +17,8 @@ app.use(cors({ origin: process.env.WEB_ORIGIN ?? "http://localhost:5173" }));
 app.use(express.json({ limit: "1mb" }));
 app.use(cookieParser());
 app.use("/api/auth", authRouter);
+app.use("/api/invitations", invitationRouter);
+app.use("/api/workspaces/:workspaceId/invitations", workspaceInvitationRouter);
 app.use("/api/workspaces/:workspaceId/projects/:projectId/tasks/:taskId/comments", commentRouter);
 app.use("/api/workspaces/:workspaceId/projects/:projectId/tasks", taskRouter);
 app.use("/api/workspaces/:workspaceId/projects", projectRouter);

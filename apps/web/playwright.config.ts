@@ -15,7 +15,7 @@ export default defineConfig({
     { name: "mobile", use: { ...devices["iPhone 13"], browserName: "chromium" } },
   ],
   webServer: [
-    { command: "npm run start -w @collabflow/api", cwd: fileURLToPath(new URL("../..", import.meta.url)), url: "http://127.0.0.1:4000/api/health", env: { WEB_ORIGIN: baseURL }, timeout: 60_000 },
+    { command: "npm run start -w @collabflow/api", cwd: fileURLToPath(new URL("../..", import.meta.url)), url: "http://127.0.0.1:4000/api/health", env: { WEB_ORIGIN: baseURL, MAIL_MODE: "file", MAIL_DIRECTORY: fileURLToPath(new URL("../../.local-mail", import.meta.url)) }, timeout: 60_000 },
     { command: "npm run dev -- --host 127.0.0.1 --strictPort", url: baseURL, timeout: 60_000 },
   ],
 });

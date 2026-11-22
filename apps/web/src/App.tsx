@@ -1,3 +1,4 @@
+import { AcceptInvitation, WorkspaceMembers } from "./invitations";
 import { WorkspaceDashboard } from "./dashboard";
 import { WorkspaceProjects } from "./projects";
 import { useWorkspaces, WorkspaceSwitcher } from "./workspaces";
@@ -33,7 +34,7 @@ function AppShell({ user, onSignOut }: { user: User; onSignOut: () => void }) {
   useEffect(() => { document.documentElement.classList.toggle("dark", dark); localStorage.setItem("collabflow-theme", dark ? "dark" : "light"); }, [dark]);
   const navItems = [{ to: "/app", icon: LayoutDashboard, name: "Overview" }, { to: "/app/my-tasks", icon: ListTodo, name: "My tasks" }, { to: "/app/projects", icon: FolderKanban, name: "Projects" }, { to: "/app/members", icon: Users, name: "Members" }, { to: "/app/settings", icon: Settings, name: "Settings" }];
   const projectsPath = activeWorkspace && `/app/workspaces/${activeWorkspace.id}/projects`;
-  const workspaceNav = projectsPath ? [navItems[0], navItems[1], { ...navItems[2], to: projectsPath }] : navItems.slice(0, 1);
+  const workspaceNav = projectsPath ? [navItems[0], navItems[1], { ...navItems[2], to: projectsPath }, navItems[3]] : navItems.slice(0, 1);
   const currentSection = routeWorkspaceId ? "Projects" : location.pathname === "/app" ? "Overview" : location.pathname.split("/").pop()?.replace("-", " ");
   const openTask = (id: string) => setParams({ task: id });
   const closeTask = () => setParams({});
@@ -44,7 +45,7 @@ function AppShell({ user, onSignOut }: { user: User; onSignOut: () => void }) {
       <WorkspaceSwitcher state={{ ...workspaces, active: activeWorkspace }} onSwitch={() => navigate("/app")} />
       <div className="nav-caption">WORKSPACE</div>
       <nav aria-label="Workspace navigation">{(preview ? navItems : workspaceNav).map(item => <Link key={item.to} className={`nav-item ${(location.pathname === item.to || (item.to === projectsPath && routeWorkspaceId)) ? "active" : ""}`} to={item.to} onClick={() => {
-        if ((item.to === "/app" || item.to === "/app/my-tasks") && activeWorkspace) workspaces.selectWorkspace(activeWorkspace.id);
+        if ((item.to === "/app" || item.to === "/app/my-tasks" || item.to === "/app/members") && activeWorkspace) workspaces.selectWorkspace(activeWorkspace.id);
         setMobileNav(false);
       }}><item.icon size={18}/>{item.name}</Link>)}</nav>
       {preview && <>
@@ -60,7 +61,9 @@ function AppShell({ user, onSignOut }: { user: User; onSignOut: () => void }) {
       <div className="page">
         {workspaces.loading ? <p role="status">Loading workspace…</p> : workspaces.error ? <div className="panel workspace-empty">
           <p>Could not load this workspace.</p><button className="primary-button" onClick={workspaces.retry}>Retry loading</button>
-        </div> : activeWorkspace ? (location.pathname === "/app" || location.pathname === "/app/my-tasks"
+        </div> : activeWorkspace ? (location.pathname === "/app/members"
+          ? <WorkspaceMembers key={activeWorkspace.id} workspace={activeWorkspace} />
+          : location.pathname === "/app" || location.pathname === "/app/my-tasks"
           ? <WorkspaceDashboard key={activeWorkspace.id} workspace={activeWorkspace} myTasks={location.pathname === "/app/my-tasks"} />
           : <WorkspaceProjects key={activeWorkspace.id} workspace={activeWorkspace} />)
         : routeWorkspaceId ? <section className="panel workspace-empty"><h1>Workspace unavailable</h1><Link to="/app">Back to overview</Link></section>
@@ -78,6 +81,7 @@ export default function App() {
     {failed ? <><p role="alert">Could not check your session.</p><button className="primary-button" onClick={retry}>Try again</button></> : <p role="status">Checking your session…</p>}
   </section></main>;
   return <Routes>
+    <Route path="/invite" element={<AcceptInvitation user={session} />} />
     <Route path="/login" element={<AuthPage key="login" mode="login" user={session} onUser={setSession} />} />
     <Route path="/register" element={<AuthPage key="register" mode="register" user={session} onUser={setSession} />} />
     <Route path="/app/*" element={<RequireSession>{session && <AppShell key={session.id} user={session} onSignOut={() => setSession(null)} />}</RequireSession>} />

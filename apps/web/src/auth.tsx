@@ -59,7 +59,7 @@ export function AuthPage({ mode, user, onUser }: {
   const [error, setError] = useState("");
   const register = mode === "register";
   const next = params.get("next") ?? "";
-  const destination = /^\/app(?:[/?#]|$)/.test(next) && !next.includes("\\") ? next : "/app";
+  const destination = /^\/(?:app(?:[/?#]|$)|invite(?:#|$))/.test(next) && !next.includes("\\") ? next : "/app";
   if (user) return <Navigate to={destination} replace />;
 
   async function submit(event: FormEvent<HTMLFormElement>) {
