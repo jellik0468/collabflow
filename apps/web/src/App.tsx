@@ -1,3 +1,4 @@
+import { useNotifications, NotificationBell, NotificationInbox } from "./notifications";
 import { AcceptInvitation, WorkspaceMembers } from "./invitations";
 import { WorkspaceDashboard } from "./dashboard";
 import { WorkspaceProjects } from "./projects";
@@ -5,7 +6,7 @@ import { useWorkspaces, WorkspaceSwitcher } from "./workspaces";
 import { AuthPage, RequireSession, SignOut, useSession, type User } from "./auth";
 import { useEffect, useState } from "react";
 import { Link, matchPath, Navigate, Route, Routes, useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { Bell, CheckCircle2, Circle, Command, FolderKanban, LayoutDashboard, ListTodo, Menu, Moon, Plus, Search, Settings, Sun, Users, X } from "lucide-react";
+import { CheckCircle2, Circle, Command, FolderKanban, LayoutDashboard, ListTodo, Menu, Moon, Plus, Search, Settings, Sun, Users, X } from "lucide-react";
 
 type View = "board" | "list" | "overview";
 const sampleTasks = [
@@ -18,6 +19,7 @@ const columns = [{ id: "todo", label: "To do", dot: "gray" }, { id: "progress", 
 function AppShell({ user, onSignOut }: { user: User; onSignOut: () => void }) {
   const initials = user.name.split(/\s+/).slice(0, 2).map(part => Array.from(part)[0]).join("").toUpperCase();
   const workspaces = useWorkspaces(user.id);
+  const inbox = useNotifications();
   const location = useLocation();
   const workspaceRoute = matchPath("/app/workspaces/:workspaceId/projects/*", location.pathname);
   const routeWorkspaceId = workspaceRoute?.params.workspaceId;
@@ -57,9 +59,9 @@ function AppShell({ user, onSignOut }: { user: User; onSignOut: () => void }) {
     </aside>
     {mobileNav && <button className="mobile-backdrop" aria-label="Close menu" onClick={() => setMobileNav(false)}/>}
     <main className="main">
-      <header className="topbar"><div className="topbar-left"><button className="icon-button mobile-menu" onClick={() => setMobileNav(true)} aria-label="Open menu"><Menu size={20}/></button><span className="topbar-workspace" title={activeWorkspace?.name}>{activeWorkspace?.name ?? "Workspace"}</span><span className="slash">/</span><strong>{projectPage && !activeWorkspace ? "Website redesign" : currentSection}</strong></div><div className="topbar-actions">{preview && <><span className="search-hint"><Search size={16}/> Search <kbd>⌘ K</kbd></span><button className="icon-button" aria-label="Notifications" onClick={() => navigate("/app/notifications")}><Bell size={19}/></button></>}<span className="top-avatar">{initials}</span></div></header>
+      <header className="topbar"><div className="topbar-left"><button className="icon-button mobile-menu" onClick={() => setMobileNav(true)} aria-label="Open menu"><Menu size={20}/></button><span className="topbar-workspace" title={activeWorkspace?.name}>{activeWorkspace?.name ?? "Workspace"}</span><span className="slash">/</span><strong>{projectPage && !activeWorkspace ? "Website redesign" : currentSection}</strong></div><div className="topbar-actions">{preview && <><span className="search-hint"><Search size={16}/> Search <kbd>⌘ K</kbd></span></>}<NotificationBell inbox={inbox}/><span className="top-avatar">{initials}</span></div></header>
       <div className="page">
-        {workspaces.loading ? <p role="status">Loading workspace…</p> : workspaces.error ? <div className="panel workspace-empty">
+        {location.pathname === "/app/notifications" ? <NotificationInbox inbox={inbox}/> : workspaces.loading ? <p role="status">Loading workspace…</p> : workspaces.error ? <div className="panel workspace-empty">
           <p>Could not load this workspace.</p><button className="primary-button" onClick={workspaces.retry}>Retry loading</button>
         </div> : activeWorkspace ? (location.pathname === "/app/members"
           ? <WorkspaceMembers key={activeWorkspace.id} workspace={activeWorkspace} />

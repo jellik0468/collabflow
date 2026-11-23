@@ -13,7 +13,7 @@ test("delivers an owner invitation and joins through the sign-in flow", async ({
   const owner = await prisma.user.create({ data: { name: "Invitation Owner", email: `owner-${suffix}@example.test`, passwordHash } });
   const recipient = await prisma.user.create({ data: { name: "Invited Member", email: `member-${suffix}@example.test`, passwordHash } });
   const workspace = await prisma.workspace.create({ data: { name: "Invitation Workspace", members: { create: { userId: owner.id, role: "OWNER" } } } });
-  const guest = await browser.newContext();
+  const guest = await browser.newContext({ viewport: page.viewportSize()! });
   try {
     const login = await page.request.post("/api/auth/login", { headers: { Origin: baseURL! }, data: { email: owner.email, password } });
     expect(login.status()).toBe(200);
@@ -47,6 +47,23 @@ test("delivers an owner invitation and joins through the sign-in flow", async ({
     await expect(guestPage.getByRole("button", { name: "New project" })).toHaveCount(0);
     await page.reload();
     await expect(page.getByText(recipient.email, { exact: true })).toBeVisible();
+    const { project } = await (await page.request.post(`/api/workspaces/${workspace.id}/projects`, {
+      headers: { Origin: baseURL! }, data: { name: "Notification project", description: "" },
+    })).json();
+    const taskResponse = await page.request.post(`/api/workspaces/${workspace.id}/projects/${project.id}/tasks`, {
+      headers: { Origin: baseURL! }, data: { title: "Review invitation", description: "", status: "TODO", priority: "MEDIUM", dueDate: null, assigneeId: recipient.id },
+    });
+    expect(taskResponse.status()).toBe(201);
+    await guestPage.goto("/app/notifications");
+    await expect(guestPage.getByText("1 unread", { exact: true })).toBeVisible();
+    await expect(guestPage.getByRole("link", { name: "Notifications, 1 unread" })).toBeVisible();
+    await guestPage.getByRole("button", { name: "Mark as read", exact: true }).click();
+    await expect(guestPage.getByText("0 unread", { exact: true })).toBeVisible();
+    await guestPage.reload();
+    await expect(guestPage.getByText("Read", { exact: true })).toBeVisible();
+    await guestPage.getByRole("link", { name: /You were assigned.*Review invitation/ }).click();
+    await expect(guestPage.getByRole("dialog", { name: "Review invitation" })).toBeVisible();
+
   } finally {
     await guest.close();
     await prisma.workspace.delete({ where: { id: workspace.id } });

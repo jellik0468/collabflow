@@ -160,3 +160,11 @@
 .member-list li { display: flex; flex-wrap: wrap; gap: .5rem 1rem; justify-content: space-between; padding: .9rem 0; border-bottom: 1px solid #dedfeb; }
 .member-list small { display: block; margin-top: .25rem; }
 .dark .member-list li { border-color: #424c64; }
+
+.notification-bell { display: inline-flex; position: relative; align-items: center; padding: .4rem; }
+.notification-bell > span { position: absolute; top: -.3rem; right: -.5rem; min-width: 1.1rem; padding: .1rem .2rem; border-radius: 1rem; font-size: .65rem; text-align: center; background: #6155e8; color: #fff; }
+.notification-list { width: 100%; padding: 0; list-style: none; }
+.notification-list li { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; padding: 1rem 0; border-bottom: 1px solid #dedfeb; }
+.notification-list p { width: 100%; overflow-wrap: anywhere; }
+.notification-list time, .notification-list li > span { font-size: .8rem; }
+.dark .notification-list li { border-color: #424c64; }

@@ -66,16 +66,25 @@ function saveTask(creating: boolean): RequestHandler {
         const id = randomUUID();
         const { tasks } = await prisma.project.update({
           where: { ...project, id: req.params.projectId },
-          data: { tasks: { create: { ...data, id } } },
+          data: { tasks: { create: { ...data, id, ...(assigneeId && { notifications: { create: { userId: assigneeId, kind: "TASK_ASSIGNED" } } }) } } },
           select: { tasks: { where: { id }, select: selection } },
         });
         res.status(201).json({ task: tasks[0] });
         return;
       }
-      const task = await prisma.task.update({
-        where: { id: req.params.taskId, project },
-        data,
-        select: selection,
+      const task = await prisma.$transaction(async tx => {
+        // Lock the task before comparing assignments so concurrent saves emit one notification per change.
+        await tx.$queryRaw(Prisma.sql`SELECT id FROM "Task" WHERE id = ${req.params.taskId} FOR UPDATE`);
+        const previous = await tx.task.findFirstOrThrow({
+          where: { id: req.params.taskId, project }, select: { assigneeId: true },
+        });
+        return tx.task.update({
+          where: { id: req.params.taskId, project },
+          data: { ...data, ...(assigneeId && assigneeId !== previous.assigneeId && {
+            notifications: { create: { userId: assigneeId, kind: "TASK_ASSIGNED" } },
+          }) },
+          select: selection,
+        });
       });
       res.json({ task });
     } catch (error) { next(error); }

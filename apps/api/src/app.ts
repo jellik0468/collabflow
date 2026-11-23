@@ -1,3 +1,4 @@
+import { notificationRouter } from "./notifications.js";
 import { invitationRouter, workspaceInvitationRouter } from "./invitations.js";
 import { commentRouter } from "./comments.js";
 import { dashboardRouter } from "./dashboard.js";
@@ -17,6 +18,7 @@ app.use(cors({ origin: process.env.WEB_ORIGIN ?? "http://localhost:5173" }));
 app.use(express.json({ limit: "1mb" }));
 app.use(cookieParser());
 app.use("/api/auth", authRouter);
+app.use("/api/notifications", notificationRouter);
 app.use("/api/invitations", invitationRouter);
 app.use("/api/workspaces/:workspaceId/invitations", workspaceInvitationRouter);
 app.use("/api/workspaces/:workspaceId/projects/:projectId/tasks/:taskId/comments", commentRouter);
