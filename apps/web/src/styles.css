@@ -168,3 +168,14 @@
 .notification-list p { width: 100%; overflow-wrap: anywhere; }
 .notification-list time, .notification-list li > span { font-size: .8rem; }
 .dark .notification-list li { border-color: #424c64; }
+
+.onboarding { max-width: 44rem; margin: 2rem auto; gap: 1rem; }
+.onboarding-icon { display: grid; place-items: center; width: 3.5rem; height: 3.5rem; border-radius: 1rem; background: #eeeaff; color: #6155e8; }
+.theme-setting { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; }
+.theme-setting select { border: 1px solid #918ca2; border-radius: .4rem; padding: .5rem .8rem; background: transparent; color: inherit; }
+:focus-visible { outline: 2px solid #8275ea; outline-offset: 3px; }
+@media (max-width: 760px) {
+  .sidebar { visibility: hidden; }
+  .sidebar-open { visibility: visible; }
+  .brand > button { margin-left: auto; }
+}
