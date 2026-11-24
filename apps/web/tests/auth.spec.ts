@@ -1,10 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
 
-test("registers, restores a session and returns to a protected task after login", async ({ page }) => {
+test("registers, restores a session and returns to a protected task after login", async ({ page, baseURL }) => {
   const email = `${randomUUID()}@example.test`;
   const password = "browser-test-password";
-  const taskUrl = "/app/projects/website?task=CF-101";
+  let taskUrl = "/app/my-tasks";
   await page.goto(taskUrl);
   await expect(page.getByRole("heading", { name: "Sign in to CollabFlow" })).toBeVisible();
   await page.getByRole("link", { name: "Create an account" }).click();
@@ -14,10 +14,24 @@ test("registers, restores a session and returns to a protected task after login"
   const formFits = await page.locator(".auth-card").evaluate(card => card.getBoundingClientRect().right <= window.innerWidth);
   expect(formFits).toBe(true);
   await page.getByRole("button", { name: "Create account" }).click();
-  await expect(page).toHaveURL(new RegExp(`/app/projects/website\\?task=CF-101$`));
+  await expect(page).toHaveURL(/\/app\/my-tasks$/);
+  const headers = { Origin: baseURL! };
+  const workspaceResponse = await page.request.post("/api/workspaces", { headers, data: { name: "Auth workspace" } });
+  expect(workspaceResponse.status()).toBe(201);
+  const { workspace } = await workspaceResponse.json();
+  const projectResponse = await page.request.post(`/api/workspaces/${workspace.id}/projects`, { headers, data: { name: "Auth project", description: "" } });
+  expect(projectResponse.status()).toBe(201);
+  const { project } = await projectResponse.json();
+  const taskResponse = await page.request.post(`/api/workspaces/${workspace.id}/projects/${project.id}/tasks`, {
+    headers, data: { title: "Verify protected links", description: "", status: "TODO", priority: "MEDIUM", dueDate: null, assigneeId: null },
+  });
+  expect(taskResponse.status()).toBe(201);
+  const { task } = await taskResponse.json();
+  taskUrl = `/app/workspaces/${workspace.id}/projects/${project.id}?task=${task.id}`;
+  await page.goto(taskUrl);
   await page.reload();
-  await expect(page.getByRole("dialog", { name: "Task details" })).toBeVisible();
-  await page.getByRole("dialog").getByRole("button", { name: "Close task details" }).click();
+  await expect(page.getByRole("dialog", { name: "Verify protected links" })).toBeVisible();
+  await page.getByRole("dialog").getByRole("button", { name: "Close task panel" }).click();
   const menu = page.getByRole("button", { name: "Open menu" });
   if (await menu.isVisible()) await menu.click();
   await page.getByRole("button", { name: "Sign out" }).click();
@@ -29,5 +43,5 @@ test("registers, restores a session and returns to a protected task after login"
   await expect(page.getByRole("alert")).toHaveText("Invalid credentials");
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page.getByRole("dialog", { name: "Task details" })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Verify protected links" })).toBeVisible();
 });

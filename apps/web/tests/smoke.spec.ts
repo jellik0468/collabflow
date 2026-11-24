@@ -9,31 +9,48 @@ test.beforeEach(async ({ page, baseURL }) => {
   expect(response.status()).toBe(201);
 });
 
-test("dashboard renders and navigates to the project board", async ({ page, isMobile }) => {
+test("first-run onboarding creates a real workspace and opens projects", async ({ page, isMobile }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: /Welcome, Jamie/ })).toBeVisible();
-  if (isMobile) await page.getByRole("button", { name: "Open menu" }).click();
-  await page.getByRole("link", { name: "Website redesign" }).first().click();
-  await expect(page.getByRole("heading", { name: /Website redesign/ })).toBeVisible();
-  await expect(page.getByText("Design onboarding experience")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Create your first workspace" })).toBeVisible();
+  await expect(page.getByText("Total tasks")).toHaveCount(0);
+  await page.getByRole("button", { name: "Create workspace", exact: true }).click();
+  await page.getByRole("textbox", { name: "Workspace name" }).fill("Design studio");
+  await page.locator(".workspace-form").getByRole("button", { name: "Create workspace", exact: true }).click();
+  if (isMobile) await page.getByRole("button", { name: "Close navigation" }).click();
+  await expect(page.getByRole("heading", { name: "Design studio" })).toBeVisible();
+  await page.screenshot({ path: `/tmp/collabflow-dashboard-${isMobile ? "mobile" : "desktop"}.png`, fullPage: true });
+  await page.getByRole("link", { name: "Open projects", exact: true }).click();
+  await page.getByRole("button", { name: "New project" }).click();
+  await page.getByLabel("Project name").fill("Website redesign");
+  await page.getByRole("button", { name: "Create project", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Website redesign", exact: true })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Kanban board" })).toHaveCount(0);
+  await expect(page.getByLabel("Kanban board")).toBeVisible();
   await page.getByRole("button", { name: "List", exact: true }).click();
-  await expect(page.getByText("Build workspace navigation")).toBeVisible();
+  await expect(page.getByRole("button", { name: "List", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Website redesign", exact: true })).toBeVisible();
 });
 
-test("task drawer has shareable URL and can be closed", async ({ page }) => {
-  await page.goto("/app/projects/website");
-  await page.getByRole("button", { name: /Design onboarding experience/ }).click();
-  await expect(page.getByRole("dialog", { name: "Task details" })).toBeVisible();
-  await expect(page).toHaveURL(/task=CF-101/);
-  await page.getByRole("dialog", { name: "Task details" }).getByRole("button", { name: "Close task details" }).click();
-  await expect(page.getByRole("dialog", { name: "Task details" })).toHaveCount(0);
+test("unavailable project URLs show an honest empty state", async ({ page }) => {
+  await page.goto("/app/projects/website?task=CF-101");
+  await expect(page.getByRole("heading", { name: "Page unavailable" })).toBeVisible();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page.getByRole("link", { name: "Back to dashboard" }).click();
+  await expect(page.getByRole("heading", { name: "Create your first workspace" })).toBeVisible();
 });
 
-test("theme preference persists after reload", async ({ page, isMobile }) => {
-  await page.goto("/app");
-  if (isMobile) await page.getByRole("button", { name: "Open menu" }).click();
-  await page.getByRole("button", { name: "Toggle dark mode" }).click();
+test("settings saves theme preference across reloads", async ({ page, isMobile }) => {
+  await page.goto("/app/settings");
+  await page.getByRole("combobox", { name: "Theme" }).selectOption("dark");
   await expect(page.locator("html")).toHaveClass(/dark/);
   await page.reload();
-  await expect(page.locator("html")).toHaveClass(/dark/);
+  await expect(page.getByRole("combobox", { name: "Theme" })).toHaveValue("dark");
+  await page.screenshot({ path: `/tmp/collabflow-settings-${isMobile ? "mobile" : "desktop"}.png`, fullPage: true });
+  if (isMobile) {
+    await page.getByRole("button", { name: "Open menu" }).click();
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("button", { name: "Open menu" })).toBeFocused();
+    await expect(page.getByRole("link", { name: "Dashboard", exact: true })).not.toBeVisible();
+  }
 });

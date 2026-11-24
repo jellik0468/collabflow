@@ -49,7 +49,7 @@ export function useWorkspaces(userId: string) {
 
   return {
     workspaces,
-    active: workspaces.find(item => item.id === selectedId),
+    active: workspaces.find(item => item.id === selectedId) ?? workspaces.at(0),
     loading,
     error,
     retry: () => { setError(false); setLoading(true); setAttempt(value => value + 1); },
@@ -58,7 +58,8 @@ export function useWorkspaces(userId: string) {
   };
 }
 
-export function WorkspaceSwitcher({ state, onSwitch }: {
+export function WorkspaceSwitcher({ state, onSwitch, createRequest = 0 }: {
+  createRequest?: number;
   state: ReturnType<typeof useWorkspaces>;
   onSwitch: () => void;
 }) {
@@ -67,6 +68,9 @@ export function WorkspaceSwitcher({ state, onSwitch }: {
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
   const { active } = state;
+  useEffect(() => {
+    if (createRequest) { setMode("create"); setError(""); setStatus(""); }
+  }, [createRequest]);
   if (state.loading) return <p className="workspace-status" role="status">Loading workspaces…</p>;
   if (state.error) return <div className="workspace-status">
     <p role="alert">Could not load workspaces.</p>
@@ -108,7 +112,7 @@ export function WorkspaceSwitcher({ state, onSwitch }: {
       openForm(null);
       onSwitch();
     }}>
-      <option value="">Preview workspace</option>
+      <option value="" disabled>Choose a workspace</option>
       {state.workspaces.map(workspace => <option key={workspace.id} value={workspace.id}>{workspace.name}</option>)}
     </select>
     <div className="workspace-actions">

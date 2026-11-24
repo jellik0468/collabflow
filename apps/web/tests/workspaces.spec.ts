@@ -12,11 +12,11 @@ test("manages workspaces, projects and tasks across reloads", async ({ page, bas
   if (isMobile) await menu.click();
 
   const switcher = page.getByRole("combobox", { name: "Workspace" });
-  await expect(switcher.locator("option:checked")).toHaveText("Preview workspace");
+  await expect(switcher.locator("option:checked")).toHaveText("Choose a workspace");
   for (const name of ["Product", "Operations"]) {
     await page.getByRole("button", { name: "New workspace" }).click();
     await page.getByRole("textbox", { name: "Workspace name" }).fill(name);
-    await page.getByRole("button", { name: "Create workspace" }).click();
+    await page.getByRole("region", { name: "Workspace management" }).getByRole("button", { name: "Create workspace" }).click();
     await expect(switcher.locator("option:checked")).toHaveText(name);
   }
 

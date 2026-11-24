@@ -4,79 +4,125 @@ import { WorkspaceDashboard } from "./dashboard";
 import { WorkspaceProjects } from "./projects";
 import { useWorkspaces, WorkspaceSwitcher } from "./workspaces";
 import { AuthPage, RequireSession, SignOut, useSession, type User } from "./auth";
-import { useEffect, useState } from "react";
-import { Link, matchPath, Navigate, Route, Routes, useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { CheckCircle2, Circle, Command, FolderKanban, LayoutDashboard, ListTodo, Menu, Moon, Plus, Search, Settings, Sun, Users, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Link, matchPath, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import { Command, FolderKanban, LayoutDashboard, ListTodo, Menu, Moon, Plus, Settings, Sun, Users, X } from "lucide-react";
 
-type View = "board" | "list" | "overview";
-const sampleTasks = [
-  { id: "CF-101", title: "Design onboarding experience", status: "todo", priority: "High", description: "Create a clear first-run experience for new workspace members." },
-  { id: "CF-102", title: "Build workspace navigation", status: "todo", priority: "Medium", description: "Make navigation intuitive across projects and teams." },
-  { id: "CF-103", title: "Implement task details", status: "progress", priority: "High", description: "Support a shareable, responsive task details drawer." },
-  { id: "CF-104", title: "Define design tokens", status: "done", priority: "Low", description: "Create a consistent design language." }
-];
-const columns = [{ id: "todo", label: "To do", dot: "gray" }, { id: "progress", label: "In progress", dot: "blue" }, { id: "done", label: "Done", dot: "green" }];
 function AppShell({ user, onSignOut }: { user: User; onSignOut: () => void }) {
   const initials = user.name.split(/\s+/).slice(0, 2).map(part => Array.from(part)[0]).join("").toUpperCase();
   const workspaces = useWorkspaces(user.id);
   const inbox = useNotifications();
   const location = useLocation();
+  const navigate = useNavigate();
   const workspaceRoute = matchPath("/app/workspaces/:workspaceId/projects/*", location.pathname);
   const routeWorkspaceId = workspaceRoute?.params.workspaceId;
   const activeWorkspace = routeWorkspaceId
     ? workspaces.workspaces.find(workspace => workspace.id === routeWorkspaceId)
     : workspaces.active;
-  const preview = !workspaces.loading && !workspaces.error && !routeWorkspaceId && !activeWorkspace;
-  const navigate = useNavigate();
-  const [params, setParams] = useSearchParams();
-  const [view, setView] = useState<View>("board");
   const [dark, setDark] = useState(() => localStorage.getItem("collabflow-theme") === "dark");
   const [mobileNav, setMobileNav] = useState(false);
-  const task = preview && sampleTasks.find(t => t.id === params.get("task"));
-  useEffect(() => { document.documentElement.classList.toggle("dark", dark); localStorage.setItem("collabflow-theme", dark ? "dark" : "light"); }, [dark]);
-  const navItems = [{ to: "/app", icon: LayoutDashboard, name: "Overview" }, { to: "/app/my-tasks", icon: ListTodo, name: "My tasks" }, { to: "/app/projects", icon: FolderKanban, name: "Projects" }, { to: "/app/members", icon: Users, name: "Members" }, { to: "/app/settings", icon: Settings, name: "Settings" }];
-  const projectsPath = activeWorkspace && `/app/workspaces/${activeWorkspace.id}/projects`;
-  const workspaceNav = projectsPath ? [navItems[0], navItems[1], { ...navItems[2], to: projectsPath }, navItems[3]] : navItems.slice(0, 1);
-  const currentSection = routeWorkspaceId ? "Projects" : location.pathname === "/app" ? "Overview" : location.pathname.split("/").pop()?.replace("-", " ");
-  const openTask = (id: string) => setParams({ task: id });
-  const closeTask = () => setParams({});
-  const projectPage = location.pathname.includes("/projects/website");
+  const [createRequest, setCreateRequest] = useState(0);
+  const menuButton = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", dark);
+    localStorage.setItem("collabflow-theme", dark ? "dark" : "light");
+  }, [dark]);
+  useEffect(() => {
+    if (!mobileNav) return;
+    const previous = document.body.style.overflow;
+    if (window.matchMedia("(max-width: 760px)").matches) document.body.style.overflow = "hidden";
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") { setMobileNav(false); menuButton.current?.focus(); }
+    };
+    document.addEventListener("keydown", escape);
+    return () => {
+      document.body.style.overflow = previous;
+      document.removeEventListener("keydown", escape);
+    };
+  }, [mobileNav]);
+
+  const projectsPath = activeWorkspace ? `/app/workspaces/${activeWorkspace.id}/projects` : "";
+  const navItems = [
+    { to: "/app", icon: LayoutDashboard, name: "Dashboard" },
+    ...(activeWorkspace ? [
+      { to: "/app/my-tasks", icon: ListTodo, name: "My tasks" },
+      { to: projectsPath, icon: FolderKanban, name: "Projects" },
+      { to: "/app/members", icon: Users, name: "Members" },
+    ] : []),
+    { to: "/app/settings", icon: Settings, name: "Settings" },
+  ];
+  const section = routeWorkspaceId || location.pathname === "/app/projects" ? "Projects"
+    : location.pathname === "/app/notifications" ? "Notifications"
+    : navItems.find(item => item.to === location.pathname)?.name ?? "Page unavailable";
+
+  function startWorkspace() {
+    setMobileNav(true);
+    setCreateRequest(value => value + 1);
+  }
+
+  function content() {
+    if (location.pathname === "/app/notifications") return <NotificationInbox inbox={inbox} />;
+    if (location.pathname === "/app/settings") return <section className="panel workspace-empty">
+      <h1>Settings</h1>
+      <h2>Account</h2><p>{user.name}</p><p>{user.email}</p>
+      <h2>Appearance</h2>
+      <label className="theme-setting">Theme
+        <select value={dark ? "dark" : "light"} onChange={event => setDark(event.target.value === "dark")}>
+          <option value="light">Light</option><option value="dark">Dark</option>
+        </select>
+      </label>
+    </section>;
+    if (workspaces.loading) return <p role="status">Loading workspace…</p>;
+    if (workspaces.error) return <section className="panel workspace-empty">
+      <p role="alert">Could not load your workspaces.</p><button className="primary-button" onClick={workspaces.retry}>Retry loading</button>
+    </section>;
+    if (routeWorkspaceId && !activeWorkspace) return <section className="panel workspace-empty">
+      <h1>Workspace unavailable</h1><Link to="/app">Back to dashboard</Link>
+    </section>;
+    if (location.pathname === "/app" && !activeWorkspace) return <section className="panel workspace-empty onboarding">
+      <div className="onboarding-icon"><FolderKanban size={28} /></div>
+      <h1>Create your first workspace</h1>
+      <p>Organize your projects, invite teammates, and track work together.</p>
+      <button className="primary-button" onClick={startWorkspace}><Plus size={17} /> Create workspace</button>
+    </section>;
+    if (activeWorkspace) {
+      if (location.pathname === "/app" || location.pathname === "/app/my-tasks") return <WorkspaceDashboard key={activeWorkspace.id} workspace={activeWorkspace} myTasks={location.pathname === "/app/my-tasks"} />;
+      if (location.pathname === "/app/members") return <WorkspaceMembers key={activeWorkspace.id} workspace={activeWorkspace} />;
+      if (location.pathname === "/app/projects") return <Navigate to={projectsPath} replace />;
+      if (workspaceRoute) return <WorkspaceProjects key={activeWorkspace.id} workspace={activeWorkspace} />;
+    }
+    return <section className="panel workspace-empty"><h1>Page unavailable</h1><Link to="/app">Back to dashboard</Link></section>;
+  }
+
   return <div className="app">
-    <aside className={`sidebar ${mobileNav ? "sidebar-open" : ""}`}>
-      <div className="brand"><div className="brand-mark"><Command size={19}/></div><span>collab<span className="brand-accent">flow</span></span></div>
-      <WorkspaceSwitcher state={{ ...workspaces, active: activeWorkspace }} onSwitch={() => navigate("/app")} />
-      <div className="nav-caption">WORKSPACE</div>
-      <nav aria-label="Workspace navigation">{(preview ? navItems : workspaceNav).map(item => <Link key={item.to} className={`nav-item ${(location.pathname === item.to || (item.to === projectsPath && routeWorkspaceId)) ? "active" : ""}`} to={item.to} onClick={() => {
-        if ((item.to === "/app" || item.to === "/app/my-tasks" || item.to === "/app/members") && activeWorkspace) workspaces.selectWorkspace(activeWorkspace.id);
-        setMobileNav(false);
-      }}><item.icon size={18}/>{item.name}</Link>)}</nav>
-      {preview && <>
-      <div className="projects-heading"><span>YOUR PROJECTS</span><Plus size={16}/></div>
-      <Link to="/app/projects/website" className="project-link" onClick={() => setMobileNav(false)}><span className="project-dot purple"/>Website redesign</Link>
-      <Link to="/app/projects/website" className="project-link" onClick={() => setMobileNav(false)}><span className="project-dot cyan"/>Mobile application</Link>
-      </>}
-      <div className="sidebar-bottom"><div className="avatar">{initials}</div><span><strong>{user.name}</strong><small>{user.email}</small></span><button aria-label="Toggle dark mode" className="icon-button" onClick={() => setDark(!dark)}>{dark ? <Sun size={18}/> : <Moon size={18}/>}</button><SignOut onSignOut={onSignOut}/></div>
-    </aside>
-    {mobileNav && <button className="mobile-backdrop" aria-label="Close menu" onClick={() => setMobileNav(false)}/>}
-    <main className="main">
-      <header className="topbar"><div className="topbar-left"><button className="icon-button mobile-menu" onClick={() => setMobileNav(true)} aria-label="Open menu"><Menu size={20}/></button><span className="topbar-workspace" title={activeWorkspace?.name}>{activeWorkspace?.name ?? "Workspace"}</span><span className="slash">/</span><strong>{projectPage && !activeWorkspace ? "Website redesign" : currentSection}</strong></div><div className="topbar-actions">{preview && <><span className="search-hint"><Search size={16}/> Search <kbd>⌘ K</kbd></span></>}<NotificationBell inbox={inbox}/><span className="top-avatar">{initials}</span></div></header>
-      <div className="page">
-        {location.pathname === "/app/notifications" ? <NotificationInbox inbox={inbox}/> : workspaces.loading ? <p role="status">Loading workspace…</p> : workspaces.error ? <div className="panel workspace-empty">
-          <p>Could not load this workspace.</p><button className="primary-button" onClick={workspaces.retry}>Retry loading</button>
-        </div> : activeWorkspace ? (location.pathname === "/app/members"
-          ? <WorkspaceMembers key={activeWorkspace.id} workspace={activeWorkspace} />
-          : location.pathname === "/app" || location.pathname === "/app/my-tasks"
-          ? <WorkspaceDashboard key={activeWorkspace.id} workspace={activeWorkspace} myTasks={location.pathname === "/app/my-tasks"} />
-          : <WorkspaceProjects key={activeWorkspace.id} workspace={activeWorkspace} />)
-        : routeWorkspaceId ? <section className="panel workspace-empty"><h1>Workspace unavailable</h1><Link to="/app">Back to overview</Link></section>
-        : projectPage ? <><div className="eyebrow">PROJECT / WEB</div><div className="page-heading"><div><h1>Website redesign <span className="heading-spark">✦</span></h1><p>A better digital experience, built together.</p></div><button className="primary-button" onClick={() => openTask("CF-101")}><Plus size={17}/> View task</button></div><div className="tabs">{(["board","list","overview"] as View[]).map(v => <button key={v} className={view === v ? "tab selected" : "tab"} onClick={() => setView(v)}>{v[0].toUpperCase()+v.slice(1)}</button>)}</div>{view === "board" ? <div className="kanban">{columns.map(c => <section className="kanban-column" key={c.id}><div className="column-title"><span className={`status-dot ${c.dot}`}/>{c.label}<span className="count">{sampleTasks.filter(t => t.status === c.id).length}</span></div>{sampleTasks.filter(t => t.status === c.id).map(t => <button className="task-card" key={t.id} onClick={() => openTask(t.id)}><span className="task-title">{t.title}</span><span className="task-bottom"><span>{t.id}</span><span className={`priority ${t.priority.toLowerCase()}`}>{t.priority}</span></span></button>)}</section>)}</div> : view === "list" ? <div className="panel list-panel">{sampleTasks.map(t => <button className="list-row" key={t.id} onClick={() => openTask(t.id)}><Circle size={17}/><span>{t.title}</span><small>{t.id}</small></button>)}</div> : <div className="stats"><Stat label="Total tasks" value="4" detail="Across this project"/><Stat label="Completed" value="1" detail="25% completion"/><Stat label="In progress" value="1" detail="Currently active"/></div>}</> :
-        <><div className="eyebrow">YOUR WORKSPACE <span className="eyebrow-star">✦</span></div><div className="page-heading"><div><h1>{location.pathname === "/app" ? `Welcome, ${user.name.split(/\s+/)[0]}` : location.pathname === "/app/my-tasks" ? "My tasks" : location.pathname === "/app/projects" ? "Projects" : location.pathname === "/app/members" ? "Members" : location.pathname === "/app/settings" ? "Settings" : "Notifications"} <span className="heading-spark">✦</span></h1><p>{location.pathname === "/app" ? "Here's what's happening across your workspace today." : "Your workspace, organized in one place."}</p></div><Link className="primary-button" to="/app/projects/website"><Plus size={17}/> Open project</Link></div><div className="stats"><Stat label="Total tasks" value="24" detail="Across your workspace"/><Stat label="In progress" value="08" detail="Currently active"/><Stat label="Completed" value="16" detail="This month"/><Stat label="Due soon" value="03" detail="Needs your attention"/></div><div className="dashboard-grid"><section className="panel"><div className="panel-heading"><div><h2>Your priorities</h2><p>Keep the important things moving.</p></div><Link to="/app/projects/website">View all →</Link></div>{sampleTasks.slice(0,3).map(t => <button className="priority-row" key={t.id} onClick={() => navigate(`/app/projects/website?task=${t.id}`)}><CheckCircle2 size={18}/><span><strong>{t.title}</strong><small>Website redesign · {t.id}</small></span><span className={`priority ${t.priority.toLowerCase()}`}>{t.priority}</span></button>)}</section><section className="panel"><div className="panel-heading"><div><h2>Active projects</h2><p>Everything your team is building.</p></div></div>{[{name:"Website redesign",pct:72,color:"purple"},{name:"Mobile application",pct:46,color:"cyan"},{name:"API infrastructure",pct:88,color:"green"}].map(p => <Link className="progress-item" to="/app/projects/website" key={p.name}><div><span className={`project-dot ${p.color}`}/><strong>{p.name}</strong><span>{p.pct}%</span></div><div className="progress-track"><div style={{width:`${p.pct}%`}}/></div></Link>)}</section></div><div className="demo-notice">✦ Preview workspace — sample content only.</div></>}
+    <aside id="app-sidebar" className={`sidebar ${mobileNav ? "sidebar-open" : ""}`}>
+      <div className="brand"><div className="brand-mark"><Command size={19} /></div><span>collab<span className="brand-accent">flow</span></span>
+        <button className="icon-button mobile-menu" aria-label="Close navigation" onClick={() => setMobileNav(false)}><X size={18} /></button>
       </div>
+      <WorkspaceSwitcher state={{ ...workspaces, active: activeWorkspace }} createRequest={createRequest} onSwitch={() => navigate("/app")} />
+      <div className="nav-caption">WORKSPACE</div>
+      <nav aria-label="Workspace navigation">{navItems.map(item => <Link key={item.to} className={`nav-item ${location.pathname === item.to || (item.to === projectsPath && routeWorkspaceId) ? "active" : ""}`}
+        to={item.to} onClick={() => {
+          if (activeWorkspace && !item.to.startsWith("/app/workspaces/")) workspaces.selectWorkspace(activeWorkspace.id);
+          setMobileNav(false);
+        }}><item.icon size={18} />{item.name}</Link>)}</nav>
+      <div className="sidebar-bottom"><div className="avatar">{initials}</div><span><strong>{user.name}</strong><small>{user.email}</small></span>
+        <button aria-label="Toggle dark mode" className="icon-button" onClick={() => setDark(!dark)}>{dark ? <Sun size={18} /> : <Moon size={18} />}</button>
+        <SignOut onSignOut={onSignOut} />
+      </div>
+    </aside>
+    {mobileNav && <button className="mobile-backdrop" aria-label="Close menu" onClick={() => setMobileNav(false)} />}
+    <main className="main">
+      <header className="topbar"><div className="topbar-left">
+        <button ref={menuButton} className="icon-button mobile-menu" aria-controls="app-sidebar" aria-expanded={mobileNav}
+          onClick={() => setMobileNav(true)} aria-label="Open menu"><Menu size={20} /></button>
+        <span className="topbar-workspace" title={activeWorkspace?.name}>{activeWorkspace?.name ?? "CollabFlow"}</span><span className="slash">/</span><strong>{section}</strong>
+      </div><div className="topbar-actions"><NotificationBell inbox={inbox} /><span className="top-avatar">{initials}</span></div></header>
+      <div className="page">{content()}</div>
     </main>
-    {task && <><button className="drawer-overlay" aria-label="Close task details" onClick={closeTask}/><aside className="task-drawer" role="dialog" aria-modal="true" aria-label="Task details"><div className="drawer-header"><span>Website redesign / {task.id}</span><button className="icon-button" aria-label="Close task details" onClick={closeTask}><X size={19}/></button></div><div className="drawer-body"><span className="eyebrow">{task.id}</span><h2>{task.title}</h2><p>{task.description}</p><div className="detail-grid"><span>Status</span><strong>{columns.find(c=>c.id===task.status)?.label}</strong><span>Priority</span><strong>{task.priority}</strong><span>Assignee</span><strong>Unassigned</strong><span>Due date</span><strong>Not set</strong></div><h3>Activity & comments</h3><div className="empty-comments">Comments will appear here once collaboration is connected.</div></div></aside></>}
   </div>;
 }
-function Stat({label,value,detail}:{label:string,value:string,detail:string}) {return <div className="stat-card"><span>{label}</span><strong>{value}</strong><small>{detail}</small></div>;}
+
 export default function App() {
   const { session, setSession, failed, retry } = useSession();
   if (session === undefined) return <main className="auth-layout"><section className="auth-card">
