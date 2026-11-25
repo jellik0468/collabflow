@@ -1,3 +1,4 @@
+import { searchRouter } from "./search.js";
 import { notificationRouter } from "./notifications.js";
 import { invitationRouter, workspaceInvitationRouter } from "./invitations.js";
 import { commentRouter } from "./comments.js";
@@ -25,6 +26,7 @@ app.use("/api/workspaces/:workspaceId/projects/:projectId/tasks/:taskId/comments
 app.use("/api/workspaces/:workspaceId/projects/:projectId/tasks", taskRouter);
 app.use("/api/workspaces/:workspaceId/projects", projectRouter);
 app.use("/api/workspaces/:workspaceId/dashboard", dashboardRouter);
+app.use("/api/workspaces/:workspaceId/search", searchRouter);
 app.use("/api/workspaces", workspaceRouter);
 app.get("/api/health", (_req, res) => { res.json({ status: "ok", service: "collabflow-api" }); });
 app.use("/api", (_req, res) => { res.status(404).json({ error: "Route not found" }); });

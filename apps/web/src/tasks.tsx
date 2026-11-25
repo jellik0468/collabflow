@@ -42,7 +42,8 @@ export function ProjectTasks({ workspaceId, projectId, archived, canDelete }: {
   const [moving, setMoving] = useState<ReadonlySet<string>>(new Set());
   const [dragging, setDragging] = useState<string | null>(null);
   const [dropLane, setDropLane] = useState<TaskStatus | null>(null);
-  const listView = params.get("view") === "list";
+  const view = params.get("view") === "overview" ? "overview" : params.get("view") === "list" ? "list" : "board";
+  const listView = view === "list";
   const refresh = useCallback(() => setAttempt(value => value + 1), []);
   const connected = useProjectSync(workspaceId, projectId, refresh);
   const endpoint = `/api/workspaces/${workspaceId}/projects/${projectId}/tasks`;
@@ -117,9 +118,9 @@ export function ProjectTasks({ workspaceId, projectId, archived, canDelete }: {
     }
   }
 
-  function changeView(list: boolean) {
+  function changeView(nextView: "board" | "list" | "overview") {
     const next = new URLSearchParams(params);
-    if (list) next.set("view", "list");
+    if (nextView !== "board") next.set("view", nextView);
     else next.delete("view");
     setParams(next);
   }
@@ -155,14 +156,23 @@ export function ProjectTasks({ workspaceId, projectId, archived, canDelete }: {
       {!archived && <button className="primary-button" onClick={() => setParams(taskParams(undefined, true))}><Plus size={16} /> New task</button>}
     </div>
     <div className="board-view-switch" role="group" aria-label="Task view">
-      <button type="button" aria-pressed={!listView} onClick={() => changeView(false)}>Board</button>
-      <button type="button" aria-pressed={listView} onClick={() => changeView(true)}>List</button>
+      <button type="button" aria-pressed={view === "board"} onClick={() => changeView("board")}>Board</button>
+      <button type="button" aria-pressed={listView} onClick={() => changeView("list")}>List</button>
+      <button type="button" aria-pressed={view === "overview"} onClick={() => changeView("overview")}>Overview</button>
     </div>
     <p className="sync-status" role="status">{connected ? "Live updates connected" : "Live updates disconnected. Reconnecting…"}</p>
     {notice && <p role="status">{notice}</p>}
     {moveError && <p role="alert">{moveError}</p>}
     {!tasks.length && <p>No tasks in this project yet.</p>}
-    {listView ? <ul className="task-list board-card-list">{tasks.map(task => taskCard(task, false))}</ul>
+    {view === "overview" ? <section className="project-overview" aria-label="Project overview">
+      <div className="stats">
+        {[{ label: "Total tasks", value: tasks.length },
+          ...lanes.map(([status, label]) => ({ label, value: tasks.filter(task => task.status === status).length }))].map(stat =>
+          <section className="stat-card" key={stat.label} aria-label={stat.label}><span>{stat.label}</span><strong>{stat.value}</strong></section>)}
+      </div>
+      <p>{tasks.length ? Math.round(tasks.filter(task => task.status === "DONE").length / tasks.length * 100) : 0}% complete</p>
+      <progress className="dashboard-progress" value={tasks.filter(task => task.status === "DONE").length} max={tasks.length || 1} aria-label="Project completion" />
+    </section> : listView ? <ul className="task-list board-card-list">{tasks.map(task => taskCard(task, false))}</ul>
       : <div className="project-board" aria-label="Kanban board">
         {lanes.map(([status, label]) => {
           const laneTasks = tasks.filter(task => task.status === status);

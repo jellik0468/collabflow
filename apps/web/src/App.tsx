@@ -1,3 +1,4 @@
+import { WorkspaceSearch, WorkspaceSearchButton } from "./search";
 import { useNotifications, NotificationBell, NotificationInbox } from "./notifications";
 import { AcceptInvitation, WorkspaceMembers } from "./invitations";
 import { WorkspaceDashboard } from "./dashboard";
@@ -14,7 +15,9 @@ function AppShell({ user, onSignOut }: { user: User; onSignOut: () => void }) {
   const inbox = useNotifications();
   const location = useLocation();
   const navigate = useNavigate();
-  const workspaceRoute = matchPath("/app/workspaces/:workspaceId/projects/*", location.pathname);
+  const workspaceRoute = matchPath("/app/workspaces/:workspaceId/*", location.pathname);
+  const projectRoute = matchPath("/app/workspaces/:workspaceId/projects/*", location.pathname);
+  const searchRoute = matchPath("/app/workspaces/:workspaceId/search", location.pathname);
   const routeWorkspaceId = workspaceRoute?.params.workspaceId;
   const activeWorkspace = routeWorkspaceId
     ? workspaces.workspaces.find(workspace => workspace.id === routeWorkspaceId)
@@ -51,7 +54,7 @@ function AppShell({ user, onSignOut }: { user: User; onSignOut: () => void }) {
     ] : []),
     { to: "/app/settings", icon: Settings, name: "Settings" },
   ];
-  const section = routeWorkspaceId || location.pathname === "/app/projects" ? "Projects"
+  const section = searchRoute ? "Search" : projectRoute || location.pathname === "/app/projects" ? "Projects"
     : location.pathname === "/app/notifications" ? "Notifications"
     : navItems.find(item => item.to === location.pathname)?.name ?? "Page unavailable";
 
@@ -89,7 +92,8 @@ function AppShell({ user, onSignOut }: { user: User; onSignOut: () => void }) {
       if (location.pathname === "/app" || location.pathname === "/app/my-tasks") return <WorkspaceDashboard key={activeWorkspace.id} workspace={activeWorkspace} myTasks={location.pathname === "/app/my-tasks"} />;
       if (location.pathname === "/app/members") return <WorkspaceMembers key={activeWorkspace.id} workspace={activeWorkspace} />;
       if (location.pathname === "/app/projects") return <Navigate to={projectsPath} replace />;
-      if (workspaceRoute) return <WorkspaceProjects key={activeWorkspace.id} workspace={activeWorkspace} />;
+      if (searchRoute) return <WorkspaceSearch key={activeWorkspace.id} workspace={activeWorkspace} />;
+      if (projectRoute) return <WorkspaceProjects key={activeWorkspace.id} workspace={activeWorkspace} />;
     }
     return <section className="panel workspace-empty"><h1>Page unavailable</h1><Link to="/app">Back to dashboard</Link></section>;
   }
@@ -101,7 +105,7 @@ function AppShell({ user, onSignOut }: { user: User; onSignOut: () => void }) {
       </div>
       <WorkspaceSwitcher state={{ ...workspaces, active: activeWorkspace }} createRequest={createRequest} onSwitch={() => navigate("/app")} />
       <div className="nav-caption">WORKSPACE</div>
-      <nav aria-label="Workspace navigation">{navItems.map(item => <Link key={item.to} className={`nav-item ${location.pathname === item.to || (item.to === projectsPath && routeWorkspaceId) ? "active" : ""}`}
+      <nav aria-label="Workspace navigation">{navItems.map(item => <Link key={item.to} className={`nav-item ${location.pathname === item.to || (item.to === projectsPath && projectRoute) ? "active" : ""}`}
         to={item.to} onClick={() => {
           if (activeWorkspace && !item.to.startsWith("/app/workspaces/")) workspaces.selectWorkspace(activeWorkspace.id);
           setMobileNav(false);
@@ -117,7 +121,7 @@ function AppShell({ user, onSignOut }: { user: User; onSignOut: () => void }) {
         <button ref={menuButton} className="icon-button mobile-menu" aria-controls="app-sidebar" aria-expanded={mobileNav}
           onClick={() => setMobileNav(true)} aria-label="Open menu"><Menu size={20} /></button>
         <span className="topbar-workspace" title={activeWorkspace?.name}>{activeWorkspace?.name ?? "CollabFlow"}</span><span className="slash">/</span><strong>{section}</strong>
-      </div><div className="topbar-actions"><NotificationBell inbox={inbox} /><span className="top-avatar">{initials}</span></div></header>
+      </div><div className="topbar-actions">{activeWorkspace && <WorkspaceSearchButton key={activeWorkspace.id} workspace={activeWorkspace} />}<NotificationBell inbox={inbox} /><span className="top-avatar">{initials}</span></div></header>
       <div className="page">{content()}</div>
     </main>
   </div>;

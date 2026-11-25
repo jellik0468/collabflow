@@ -179,3 +179,14 @@
   .sidebar-open { visibility: visible; }
   .brand > button { margin-left: auto; }
 }
+
+.workspace-search-dialog { margin: auto; width: min(calc(100% - 2rem), 36rem); padding: 1.5rem; border: 1px solid #dedfeb; border-radius: 1rem; background: #fff; color: #1c2336; }
+.workspace-search-dialog::backdrop { background: #10152d55; }
+.workspace-search-dialog h2, .search-result-group h2 { font-weight: 700; font-size: 1.1rem; }
+.workspace-search-dialog .project-page-heading { margin-bottom: 1rem; }
+.workspace-search-form { display: flex; flex-wrap: wrap; align-items: end; gap: .75rem; width: 100%; }
+.workspace-search-form label { display: grid; gap: .4rem; flex: 1; min-width: min(100%, 12rem); }
+.workspace-search-form input { min-width: 0; width: 100%; border: 1px solid #918ca2; border-radius: .5rem; padding: .65rem; background: transparent; color: inherit; }
+.search-result-group, .project-overview { width: 100%; min-width: 0; }
+.search-results { gap: 1.25rem; }
+.dark .workspace-search-dialog { background: #1a2030; color: #eef0fb; border-color: #424c64; }
