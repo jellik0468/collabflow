@@ -14,10 +14,13 @@ const details = z.object({
   priority: z.nativeEnum(TaskPriority),
   dueDate: z.string().date().refine(value => value >= "0001-01-01").nullable(),
   assigneeId: z.string().min(1).max(128).nullable(),
+  expectedVersion: z.number().int().positive().optional(),
 }).strict();
 const selection = {
-  id: true, title: true, description: true, status: true, priority: true, dueDate: true, assigneeId: true,
+  id: true, version: true, title: true, description: true, status: true, priority: true, dueDate: true, assigneeId: true,
 } as const;
+class TaskConflict extends Error {}
+const conflictMessage = "This task changed while you were editing. Cancel editing to load the latest version, then retry.";
 const unavailable = { error: "Project or task unavailable." };
 
 function projectAccess(params: Record<string, string>, userId: string, assigneeId?: string | null): Prisma.ProjectWhereInput {
@@ -58,7 +61,7 @@ function saveTask(creating: boolean): RequestHandler {
       res.status(400).json({ error: "Enter a valid title, description, status, priority, assignee and due date." });
       return;
     }
-    const { dueDate, assigneeId, ...fields } = parsed.data;
+    const { dueDate, assigneeId, expectedVersion, ...fields } = parsed.data;
     const data = { ...fields, assigneeId, dueDate: dueDate ? new Date(dueDate) : null };
     const project = { ...projectAccess(req.params, res.locals.user.id, assigneeId), archivedAt: null };
     try {
@@ -76,11 +79,12 @@ function saveTask(creating: boolean): RequestHandler {
         // Lock the task before comparing assignments so concurrent saves emit one notification per change.
         await tx.$queryRaw(Prisma.sql`SELECT id FROM "Task" WHERE id = ${req.params.taskId} FOR UPDATE`);
         const previous = await tx.task.findFirstOrThrow({
-          where: { id: req.params.taskId, project }, select: { assigneeId: true },
+          where: { id: req.params.taskId, project }, select: { assigneeId: true, version: true },
         });
+        if (expectedVersion !== undefined && expectedVersion !== previous.version) throw new TaskConflict();
         return tx.task.update({
           where: { id: req.params.taskId, project },
-          data: { ...data, ...(assigneeId && assigneeId !== previous.assigneeId && {
+          data: { ...data, version: { increment: 1 }, ...(assigneeId && assigneeId !== previous.assigneeId && {
             notifications: { create: { userId: assigneeId, kind: "TASK_ASSIGNED" } },
           }) },
           select: selection,
@@ -106,7 +110,7 @@ taskRouter.patch("/:taskId/status", async (req, res, next) => {
         id: req.params.taskId,
         project: { ...projectAccess(req.params, res.locals.user.id), archivedAt: null },
       },
-      data: parsed.data,
+      data: { ...parsed.data, version: { increment: 1 } },
       select: selection,
     });
     res.json({ task });
@@ -131,6 +135,10 @@ taskRouter.delete<{ workspaceId: string; projectId: string; taskId: string }>("/
 });
 
 const taskNotFound: ErrorRequestHandler = (error, _req, res, next) => {
+  if (error instanceof TaskConflict) {
+    res.status(409).json({ error: conflictMessage });
+    return;
+  }
   if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
     res.status(404).json(unavailable);
     return;

@@ -100,6 +100,19 @@ test("manages workspaces, projects and tasks across reloads", async ({ page, bas
   await overview.close();
   await taskPanel.getByRole("button", { name: "Edit task" }).click();
   await taskPanel.getByLabel("Status").selectOption("DONE");
+  const activeTaskUrl = new URL(page.url());
+  const apiProjectPath = activeTaskUrl.pathname.replace("/app/workspaces/", "/api/workspaces/");
+  const concurrent = await page.request.patch(`${apiProjectPath}/tasks/${activeTaskUrl.searchParams.get("task")}/status`, {
+    headers: { Origin: baseURL! }, data: { status: "TODO" },
+  });
+  expect(concurrent.status()).toBe(200);
+  await taskPanel.getByRole("button", { name: "Save task" }).click();
+  await expect(taskPanel.getByRole("alert")).toHaveText(/This task changed while you were editing/);
+  await expect(taskPanel.getByLabel("Status")).toHaveValue("DONE");
+  await taskPanel.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(taskPanel.getByText("To do", { exact: true })).toBeVisible();
+  await taskPanel.getByRole("button", { name: "Edit task" }).click();
+  await taskPanel.getByLabel("Status").selectOption("DONE");
   await taskPanel.getByRole("button", { name: "Save task" }).click();
   await expect(taskPanel.getByText("Done", { exact: true })).toBeVisible();
   await taskPanel.getByRole("button", { name: "Close task panel" }).click();

@@ -1,3 +1,4 @@
+import { apiFetch } from "./api";
 import { TaskComments } from "./comments";
 import { useProjectSync } from "./use-project-sync";
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
@@ -10,14 +11,14 @@ const lanes = Object.entries(statuses) as [TaskStatus, string][];
 const priorities = { LOW: "Low", MEDIUM: "Medium", HIGH: "High" };
 type TaskFields = {
   title: string; description: string; status: TaskStatus; priority: keyof typeof priorities;
-  dueDate: string | null; assigneeId: string | null;
+  dueDate: string | null; assigneeId: string | null; expectedVersion?: number;
 };
-type Task = TaskFields & { id: string };
+type Task = TaskFields & { id: string; version: number };
 type Person = { id: string; name: string };
 type TaskData = { tasks: Task[]; assignees: Person[] };
 
 async function request<T>(url: string, signal?: AbortSignal, method = "GET", body?: object): Promise<T> {
-  const response = await fetch(url, {
+  const response = await apiFetch(url, {
     cache: "no-store", signal, method,
     ...(body && { headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }),
   });
@@ -101,7 +102,7 @@ export function ProjectTasks({ workspaceId, projectId, archived, canDelete }: {
     setMoveError("");
     try {
       const { task } = await request<{ task: Task }>(`${endpoint}/${id}/status`, undefined, "PATCH", { status });
-      setData(previous => previous && ({ ...previous, tasks: previous.tasks.map(item => item.id === id ? { ...item, status: task.status } : item) }));
+      setData(previous => previous && ({ ...previous, tasks: previous.tasks.map(item => item.id === id ? { ...item, status: task.status, version: task.version } : item) }));
       setNotice(`${task.title} moved to ${statuses[task.status]}.`);
     } catch (error) {
       setMoveError(error instanceof Error ? error.message : "Could not move task. Try again.");
@@ -238,6 +239,7 @@ function TaskDetails({ task, assignees, assignee, archived, canDelete, onSave, o
   onSave: (fields: TaskFields) => Promise<void>; onDelete: (id: string) => Promise<void>;
 }) {
   const [editing, setEditing] = useState(!task);
+  const [editingVersion, setEditingVersion] = useState(task?.version);
   const [confirming, setConfirming] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
@@ -253,7 +255,7 @@ function TaskDetails({ task, assignees, assignee, archived, canDelete, onSave, o
     setError("");
     try {
       await onSave({
-        title, description: String(data.get("description")),
+        title, description: String(data.get("description")), expectedVersion: editingVersion,
         status: data.get("status") as TaskFields["status"], priority: data.get("priority") as TaskFields["priority"],
         assigneeId: String(data.get("assigneeId")) || null, dueDate: String(data.get("dueDate")) || null,
       });
@@ -306,7 +308,7 @@ function TaskDetails({ task, assignees, assignee, archived, canDelete, onSave, o
           <button className="project-secondary" disabled={pending} onClick={() => { setConfirming(false); setError(""); }}>Cancel</button>
         </div>
       </div> : <div className="project-actions">
-        <button className="primary-button" onClick={() => { setSaved(false); setEditing(true); }}>Edit task</button>
+        <button className="primary-button" onClick={() => { setSaved(false); setEditingVersion(task.version); setEditing(true); }}>Edit task</button>
         {canDelete && <button className="project-secondary" onClick={() => setConfirming(true)}>Delete task</button>}
       </div>)}
     </>}

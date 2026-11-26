@@ -1,3 +1,4 @@
+import { apiFetch } from "./api";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useProjectSync } from "./use-project-sync";
 
@@ -5,7 +6,7 @@ type Comment = { id: string; body: string; createdAt: string; author: { id: stri
 type CommentPage = { comments: Comment[]; viewerId: string; nextCursor: string | null };
 
 async function commentRequest<T>(url: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(url, { cache: "no-store", ...options });
+  const response = await apiFetch(url, { cache: "no-store", ...options });
   if (response.status === 204) return undefined as T;
   const data = await response.json().catch(() => null);
   if (!response.ok || !data) throw new Error(data?.error ?? "Comments are unavailable. Try again.");

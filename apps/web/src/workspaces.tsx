@@ -1,9 +1,10 @@
+import { apiFetch } from "./api";
 import { useEffect, useState, type FormEvent } from "react";
 
 type Workspace = { id: string; name: string; role: "OWNER" | "MEMBER" };
 
 async function workspaceRequest(path = "", options?: RequestInit) {
-  const response = await fetch(`/api/workspaces${path}`, { cache: "no-store", ...options });
+  const response = await apiFetch(`/api/workspaces${path}`, { cache: "no-store", ...options });
   const data = await response.json().catch(() => null);
   if (!response.ok || !data) {
     throw new Error(data?.error ?? "Workspaces are unavailable. Try again.");

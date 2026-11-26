@@ -1,3 +1,4 @@
+import { apiFetch } from "./api";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Search, X } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
@@ -58,7 +59,7 @@ export function WorkspaceSearch({ workspace }: { workspace: Workspace }) {
     const controller = new AbortController();
     setData(null);
     setFailed(false);
-    if (valid) fetch(`/api/workspaces/${workspace.id}/search?q=${encodeURIComponent(query)}`, { cache: "no-store", signal: controller.signal })
+    if (valid) apiFetch(`/api/workspaces/${workspace.id}/search?q=${encodeURIComponent(query)}`, { cache: "no-store", signal: controller.signal })
       .then(async response => { if (!response.ok) throw new Error("Search failed"); return response.json() as Promise<Results>; })
       .then(result => { if (!controller.signal.aborted) setData(result); })
       .catch(() => { if (!controller.signal.aborted) setFailed(true); });

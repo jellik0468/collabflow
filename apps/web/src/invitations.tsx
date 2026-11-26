@@ -1,9 +1,10 @@
+import { apiFetch } from "./api";
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useLocation } from "react-router-dom";
 import type { User } from "./auth";
 
 async function api<T>(url: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(url, { cache: "no-store", ...options });
+  const response = await apiFetch(url, { cache: "no-store", ...options });
   const data = await response.json().catch(() => null);
   if (!response.ok || !data) throw new Error(data?.error ?? "The request failed. Please try again.");
   return data;

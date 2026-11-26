@@ -1,3 +1,4 @@
+import { apiFetch } from "./api";
 import { useProjectSync } from "./use-project-sync";
 import { ProjectTasks } from "./tasks";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
@@ -8,7 +9,7 @@ type Project = { id: string; name: string; description: string; archivedAt: stri
 type Workspace = { id: string; name: string; role: "OWNER" | "MEMBER" };
 
 async function projectRequest<T>(workspaceId: string, path = "", options?: RequestInit): Promise<T> {
-  const response = await fetch(`/api/workspaces/${workspaceId}/projects${path}`, { cache: "no-store", ...options });
+  const response = await apiFetch(`/api/workspaces/${workspaceId}/projects${path}`, { cache: "no-store", ...options });
   const data = await response.json().catch(() => null);
   if (!response.ok || !data) throw new Error(data?.error ?? "Could not load projects. Try again.");
   return data;

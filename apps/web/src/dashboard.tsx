@@ -1,3 +1,4 @@
+import { apiFetch } from "./api";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowUpRight, FolderKanban, RefreshCw } from "lucide-react";
@@ -29,7 +30,7 @@ export function WorkspaceDashboard({ workspace, myTasks = false }: {
   useEffect(() => {
     const controller = new AbortController();
     setLoading(true);
-    fetch(`/api/workspaces/${workspace.id}/dashboard`, { cache: "no-store", signal: controller.signal })
+    apiFetch(`/api/workspaces/${workspace.id}/dashboard`, { cache: "no-store", signal: controller.signal })
       .then(async response => {
         if (!response.ok) throw new Error("Dashboard unavailable");
         return response.json() as Promise<Dashboard>;
