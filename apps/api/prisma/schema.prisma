@@ -93,6 +93,7 @@ model Task {
   assigneeId  String?
   title       String       @db.VarChar(120)
   description String       @default("") @db.VarChar(2000)
+  version     Int          @default(1)
   status      TaskStatus   @default(TODO)
   priority    TaskPriority @default(MEDIUM)
   dueDate     DateTime?    @db.Date

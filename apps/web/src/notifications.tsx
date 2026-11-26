@@ -1,3 +1,4 @@
+import { apiFetch } from "./api";
 import { useCallback, useEffect, useState } from "react";
 import { Bell } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -29,7 +30,7 @@ export function useNotifications() {
     const controller = new AbortController();
     setLoading(true);
     async function fetchPage(cursor?: string): Promise<Inbox> {
-      const response = await fetch(`/api/notifications${cursor ? `?before=${encodeURIComponent(cursor)}` : ""}`, { cache: "no-store", signal: controller.signal });
+      const response = await apiFetch(`/api/notifications${cursor ? `?before=${encodeURIComponent(cursor)}` : ""}`, { cache: "no-store", signal: controller.signal });
       if (!response.ok) throw new Error("Could not load notifications.");
       return response.json();
     }
@@ -50,7 +51,7 @@ export function useNotifications() {
     setPending(current => new Set(current).add(id));
     setError("");
     try {
-      const response = await fetch(`/api/notifications/${id}/read`, {
+      const response = await apiFetch(`/api/notifications/${id}/read`, {
         method: "POST", headers: { "Content-Type": "application/json" }, body: "{}",
       });
       if (!response.ok) throw new Error("Could not mark the notification as read.");

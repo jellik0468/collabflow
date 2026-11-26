@@ -1,4 +1,5 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { advanceSessionRevision } from "./api";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { Command, LogOut } from "lucide-react";
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 
@@ -10,9 +11,9 @@ class AuthError extends Error {
   }
 }
 
-async function authRequest(path: string, input?: object): Promise<User | null> {
+async function authRequest(path: string, input?: object, signal?: AbortSignal): Promise<User | null> {
   const response = await fetch(`/api/auth/${path}`, {
-    cache: "no-store",
+    cache: "no-store", signal,
     ...(input && {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -26,22 +27,59 @@ async function authRequest(path: string, input?: object): Promise<User | null> {
   return data.user;
 }
 
+function announceSessionChange() {
+  localStorage.setItem("collabflow-session-change", `${Date.now()}-${Math.random()}`);
+}
+
 export function useSession() {
-  const [session, setSession] = useState<User | null | undefined>(undefined);
+  const [session, setSessionState] = useState<User | null | undefined>(undefined);
+  const currentSession = useRef<User | null | undefined>(undefined);
+  const request = useRef<AbortController>();
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  const setSession = useCallback((user: User | null) => {
+    request.current?.abort();
+    currentSession.current = user;
+    advanceSessionRevision();
+    setFailed(false);
+    setSessionState(user);
+  }, []);
   useEffect(() => {
     let active = true;
-    authRequest("me").then(user => {
-      if (active) setSession(user);
-    }).catch(error => {
-      if (!active) return;
-      if (error instanceof AuthError && error.status === 401) setSession(null);
-      else setFailed(true);
-    });
-    return () => { active = false; };
-  }, [attempt]);
-  return { session, setSession, failed, retry: () => { setFailed(false); setAttempt(attempt + 1); } };
+    function check() {
+      request.current?.abort();
+      const controller = new AbortController();
+      request.current = controller;
+      authRequest("me", undefined, controller.signal).then(user => {
+        if (active && !controller.signal.aborted) setSession(user);
+      }).catch(error => {
+        if (!active || controller.signal.aborted) return;
+        if (error instanceof AuthError && error.status === 401) setSession(null);
+        else if (currentSession.current === undefined) setFailed(true);
+      });
+    }
+    const recheckVisible = () => {
+      if (currentSession.current && document.visibilityState === "visible") check();
+    };
+    const changed = (event: StorageEvent) => { if (event.key === "collabflow-session-change") check(); };
+    const expired = () => setSession(null);
+    window.addEventListener("collabflow-session-expired", expired);
+    window.addEventListener("storage", changed);
+    window.addEventListener("focus", recheckVisible);
+    document.addEventListener("visibilitychange", recheckVisible);
+    const interval = window.setInterval(recheckVisible, 60_000);
+    check();
+    return () => {
+      active = false;
+      request.current?.abort();
+      clearInterval(interval);
+      window.removeEventListener("collabflow-session-expired", expired);
+      window.removeEventListener("storage", changed);
+      window.removeEventListener("focus", recheckVisible);
+      document.removeEventListener("visibilitychange", recheckVisible);
+    };
+  }, [attempt, setSession]);
+  return { session, setSession, failed, retry: () => { setFailed(false); setAttempt(value => value + 1); } };
 }
 
 export function RequireSession({ children }: { children: React.ReactNode }) {
@@ -76,6 +114,7 @@ export function AuthPage({ mode, user, onUser }: {
       const result = await authRequest(mode, Object.fromEntries(data));
       if (!result) throw new Error("Your session could not be started. Try again.");
       onUser(result);
+      announceSessionChange();
       navigate(destination, { replace: true });
     } catch (error) {
       setError(error instanceof AuthError ? error.message : "Could not connect. Try again.");
@@ -113,6 +152,7 @@ export function SignOut({ onSignOut }: { onSignOut: () => void }) {
     try {
       await authRequest("logout", {});
       onSignOut();
+      announceSessionChange();
     } catch {
       setError(true);
     } finally {

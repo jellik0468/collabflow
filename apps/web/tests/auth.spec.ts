@@ -1,3 +1,4 @@
+import { PrismaClient } from "@prisma/client";
 import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
 
@@ -44,4 +45,11 @@ test("registers, restores a session and returns to a protected task after login"
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page.getByRole("dialog", { name: "Verify protected links" })).toBeVisible();
+  const prisma = new PrismaClient();
+  try {
+    await prisma.session.updateMany({ where: { user: { email } }, data: { expiresAt: new Date(0) } });
+  } finally { await prisma.$disconnect(); }
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect(page.getByRole("heading", { name: "Sign in to CollabFlow" })).toBeVisible();
+  await expect(page).toHaveURL(/next=/);
 });
