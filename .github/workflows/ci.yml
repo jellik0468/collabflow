@@ -33,3 +33,4 @@ jobs:
         working-directory: apps/web
       - run: npx playwright test
         working-directory: apps/web
+      - run: npm run test:production

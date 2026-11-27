@@ -28,4 +28,4 @@ npx playwright test
 
 The API suite creates and removes its own users. Playwright creates accounts in the test database and leaves them there, so use a disposable database. CI provisions PostgreSQL and runs both suites.
 
-The authenticated UI still contains the existing preview workspace. Account recovery and email verification are outside the current authentication scope.
+Account recovery and email verification are outside the current authentication scope.
